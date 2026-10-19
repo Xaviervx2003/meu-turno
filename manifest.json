@@ -1,12 +1,12 @@
 {
-  "name": "Meu Turno - Controle para Motoristas",
+  "name": "Meu Turno — Driver Finance",
   "short_name": "Meu Turno",
-  "description": "Calculadora e controle financeiro diário de ganhos e gastos para motoristas Uber, 99 e entregadores.",
+  "description": "Controle financeiro diário de ganhos e gastos no padrão Uber Driver.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#121212",
-  "theme_color": "#121212",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "orientation": "portrait-primary",
   "icons": [
     {
