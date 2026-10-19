@@ -90,6 +90,10 @@
       background: var(--uber-green);
       box-shadow: 0 0 10px var(--uber-green);
     }
+    .status-dot.paused {
+      background: var(--uber-yellow);
+      box-shadow: 0 0 10px var(--uber-yellow);
+    }
 
     /* Pílula Central de Ganhos igual ao topo do Uber Driver */
     .earnings-pill {
@@ -279,6 +283,29 @@
     .live-shift-card.active-shift {
       border-color: var(--uber-green);
       background: linear-gradient(180deg, rgba(6, 193, 103, 0.08) 0%, var(--uber-surface) 100%);
+    }
+    .live-shift-card.paused-shift {
+      border-color: var(--uber-yellow);
+      background: linear-gradient(180deg, rgba(255, 192, 67, 0.10) 0%, var(--uber-surface) 100%);
+    }
+
+    .btn-uber-pause {
+      width: 100%;
+      min-height: 48px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(255, 192, 67, 0.45);
+      background: rgba(255, 192, 67, 0.14);
+      color: var(--uber-yellow);
+      font-size: 0.92rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-uber-pause:active {
+      transform: scale(0.99);
     }
 
     .btn-uber-go {
@@ -1581,7 +1608,14 @@
       document.getElementById(id).classList.toggle('open');
     },
 
-    /* --- Fluxo do Dia a Dia na Pista (Turno ao Vivo + Gastos Rápidos) --- */
+    formatarDuracaoMs(ms) {
+      const totalMin = Math.max(1, Math.round(ms / 60000));
+      const h = Math.floor(totalMin / 60);
+      const m = totalMin % 60;
+      return h > 0 ? `${h}h ${m}m` : `${m}m`;
+    },
+
+    /* --- Fluxo do Dia a Dia na Pista (Turno ao Vivo + Pausa Almoço + Gastos Rápidos) --- */
     renderizarTurnoVivo() {
       const ativo = StorageService.obterTurnoAtivo();
       const card = document.getElementById('cardTurnoVivo');
@@ -1589,8 +1623,8 @@
       const txt = document.getElementById('topStatusText');
 
       if (!ativo) {
-        card.classList.remove('active-shift');
-        dot.classList.remove('online');
+        card.classList.remove('active-shift', 'paused-shift');
+        dot.classList.remove('online', 'paused');
         txt.textContent = 'Fora de turno';
 
         card.innerHTML = `
@@ -1605,24 +1639,46 @@
         return;
       }
 
-      card.classList.add('active-shift');
-      dot.classList.add('online');
-      txt.textContent = 'Em Turno';
-
-      const duracaoHoras = Math.max(0.1, (Date.now() - ativo.inicioMs) / 3600000);
-      const horasInt = Math.floor(duracaoHoras);
-      const minInt = Math.round((duracaoHoras - horasInt) * 60);
+      const agoraMs = Date.now();
+      const emPausa = Boolean(ativo.pausadoEmMs);
+      const pausaAtualMs = emPausa ? Math.max(0, agoraMs - ativo.pausadoEmMs) : 0;
+      const pausaTotalMs = (ativo.totalPausaMs || 0) + pausaAtualMs;
+      const tempoLiquidoMs = Math.max(60000, (agoraMs - ativo.inicioMs) - pausaTotalMs);
       const totalGastosParciais = (ativo.combustivel || 0) + (ativo.alimentacao || 0) + (ativo.outrosGastos || 0);
+
+      card.classList.toggle('active-shift', !emPausa);
+      card.classList.toggle('paused-shift', emPausa);
+      dot.classList.toggle('online', !emPausa);
+      dot.classList.toggle('paused', emPausa);
+      txt.textContent = emPausa ? 'Em Pausa' : 'Em Turno';
+
+      const badgeHTML = emPausa
+        ? `<span class="status-badge status-warn">☕ PAUSA ALMOÇO (${this.formatarDuracaoMs(pausaAtualMs)})</span>`
+        : `<span class="status-badge status-good">🟢 EM TURNO DESDE ${ativo.horaFormatada}</span>`;
+
+      const infoPausaHTML = pausaTotalMs > 0
+        ? ` • Pausa descontada: <b style="color:var(--uber-yellow);">${this.formatarDuracaoMs(pausaTotalMs)}</b>`
+        : '';
+
+      const botaoPausaHTML = emPausa
+        ? `<button type="button" class="btn-uber-green" style="margin-bottom:10px;" onclick="UIController.alternarPausaTurno()">
+             ▶ Retomar Turno (Voltar p/ Pista)
+           </button>`
+        : `<button type="button" class="btn-uber-pause" style="margin-bottom:10px;" onclick="UIController.alternarPausaTurno()">
+             <span>☕ Pausar p/ Almoço ou Descanso</span>
+           </button>`;
 
       card.innerHTML = `
         <div class="card-header-row" style="margin-bottom:8px;">
-          <span class="status-badge status-good">🟢 EM TURNO DESDE ${ativo.horaFormatada}</span>
-          <span style="font-size:0.8rem; font-weight:700;">${horasInt}h ${minInt}m</span>
+          ${badgeHTML}
+          <span style="font-size:0.8rem; font-weight:700;">Rodando: ${this.formatarDuracaoMs(tempoLiquidoMs)}</span>
         </div>
-        <div style="font-size:0.85rem; color:var(--uber-muted); margin-bottom:10px;">
-          Odômetro Inicial: <b style="color:#fff;">${ativo.kmInicial || 'Não informado'} km</b> •
-          Gastos anotados hoje: <b style="color:#fff;">R$ ${totalGastosParciais.toFixed(2)}</b>
+        <div style="font-size:0.83rem; color:var(--uber-muted); margin-bottom:12px;">
+          KM Inicial: <b style="color:#fff;">${ativo.kmInicial || '—'}</b> •
+          Gastos hoje: <b style="color:#fff;">R$ ${totalGastosParciais.toFixed(2)}</b>${infoPausaHTML}
         </div>
+
+        ${botaoPausaHTML}
 
         <div style="font-size:0.72rem; color:var(--uber-muted); text-transform:uppercase; font-weight:700;">
           Anote gastos rápidos na rua:
@@ -1648,6 +1704,27 @@
           </button>
         </div>
       `;
+    },
+
+    alternarPausaTurno() {
+      const ativo = StorageService.obterTurnoAtivo();
+      if (!ativo) return;
+
+      const agora = Date.now();
+      if (!ativo.pausadoEmMs) {
+        ativo.pausadoEmMs = agora;
+        ativo.horaPausa = new Date(agora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        StorageService.salvarTurnoAtivo(ativo);
+        this.renderizarTurnoVivo();
+        this.notificar('☕ Turno pausado! Bom almoço / descanso.');
+      } else {
+        const duracaoPausa = Math.max(0, agora - ativo.pausadoEmMs);
+        ativo.totalPausaMs = (ativo.totalPausaMs || 0) + duracaoPausa;
+        ativo.pausadoEmMs = null;
+        StorageService.salvarTurnoAtivo(ativo);
+        this.renderizarTurnoVivo();
+        this.notificar(`▶️ De volta à pista! (${this.formatarDuracaoMs(duracaoPausa)} de pausa descontados)`);
+      }
     },
 
     async iniciarTurnoNaPista() {
@@ -1678,6 +1755,8 @@
         inicioMs: Date.now(),
         horaFormatada,
         kmInicial,
+        pausadoEmMs: null,
+        totalPausaMs: 0,
         combustivel: 0,
         alimentacao: 0,
         outrosGastos: 0
@@ -1714,7 +1793,11 @@
       const ativo = StorageService.obterTurnoAtivo();
       if (!ativo) return;
 
-      const horasDecorridas = Math.max(0.5, Number(((Date.now() - ativo.inicioMs) / 3600000).toFixed(1)));
+      const agoraMs = Date.now();
+      const pausaAtualMs = ativo.pausadoEmMs ? Math.max(0, agoraMs - ativo.pausadoEmMs) : 0;
+      const pausaTotalMs = (ativo.totalPausaMs || 0) + pausaAtualMs;
+      const tempoLiquidoMs = Math.max(0, (agoraMs - ativo.inicioMs) - pausaTotalMs);
+      const horasDecorridas = Math.max(0.5, Number((tempoLiquidoMs / 3600000).toFixed(1)));
 
       if (ativo.kmInicial > 0) document.getElementById('kmInicial').value = ativo.kmInicial;
       document.getElementById('horasTrabalhadas').value = horasDecorridas;
@@ -1722,9 +1805,10 @@
       if (ativo.alimentacao > 0) document.getElementById('alimentacao').value = ativo.alimentacao.toFixed(2);
       if (ativo.outrosGastos > 0) document.getElementById('outrosGastos').value = ativo.outrosGastos.toFixed(2);
 
+      Rascunho.salvar();
       this.navegarAba('fechar');
       document.getElementById('kmFinal').focus();
-      this.notificar('Dados do turno preenchidos! Informe o KM Final e Faturamento.');
+      this.notificar('Dados do turno preenchidos (pausas descontadas)!');
     },
 
     async cancelarTurnoVivo() {

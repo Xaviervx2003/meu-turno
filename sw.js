@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meu-turno-v5';
+const CACHE_NAME = 'meu-turno-v6';
 const ASSETS = [
   './',
   './index.html',
