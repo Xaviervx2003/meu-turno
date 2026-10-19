@@ -55,6 +55,11 @@ Para **nunca ficar bagunçado** ou poluído visualmente, a interface segue rigor
    - Todo card deve ter no máximo: **Título/Rótulo** (`0.75rem`, cinza), **Valor Principal** (`1.5rem` a `2.2rem`, branco ou verde em negrito) e **Subtítulo de Apoio** (`0.8rem`).
 3. **Alvos de Toque Veiculares:**
    - Botões principais e inputs devem ter no mínimo `48px` de altura para facilitar o toque com o celular fixado no suporte do painel.
+4. **Proibido Diálogos Nativos do Navegador (`alert` / `prompt` / `confirm`):**
+   - Toda pergunta ao motorista abre um **Bottom Sheet** (painel que sobe de baixo, igual ao Uber Driver) via módulo `Sheet`:
+     - `Sheet.pedirValor({...})` → campo numérico gigante (`64px`), prefixo `R$`/sufixo `km` e **chips de valor rápido** (`+10`, `+20`, `+50`, `+100`).
+     - `Sheet.confirmar({...})` → confirmação com botão de cor semântica (`danger` vermelho para ações destrutivas).
+   - O botão de ação fica sempre **embaixo** (zona do polegar) e "Cancelar" é discreto (ghost).
 
 ---
 

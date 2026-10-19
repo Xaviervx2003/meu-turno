@@ -547,6 +547,158 @@
       color: var(--uber-white);
     }
 
+    /* ==========================================================================
+       9. BOTTOM SHEET (ESTILO UBER — SUBSTITUI DIÁLOGOS DO NAVEGADOR)
+       ========================================================================== */
+    body.sheet-aberto { overflow: hidden; }
+
+    .sheet-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.72);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 300;
+    }
+    .sheet-overlay.open { opacity: 1; pointer-events: auto; }
+
+    .sheet {
+      position: fixed;
+      left: 50%;
+      bottom: 0;
+      width: 100%;
+      max-width: 480px;
+      transform: translate(-50%, 105%);
+      background: var(--uber-surface);
+      border: 1px solid var(--uber-border);
+      border-bottom: none;
+      border-radius: 22px 22px 0 0;
+      padding: 10px 18px calc(18px + env(safe-area-inset-bottom));
+      transition: transform 0.24s cubic-bezier(0.2, 0.9, 0.3, 1);
+      z-index: 301;
+      box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.6);
+    }
+    .sheet.open { transform: translate(-50%, 0); }
+
+    .sheet-handle {
+      width: 40px;
+      height: 5px;
+      border-radius: var(--radius-pill);
+      background: #3d3d3d;
+      margin: 0 auto 16px;
+    }
+    .sheet-header {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+    .sheet-icone {
+      flex-shrink: 0;
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: var(--uber-surface-elevated);
+      border: 1px solid var(--uber-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+    .sheet-titulo {
+      margin: 2px 0 4px;
+      font-size: 1.3rem;
+      font-weight: 900;
+      letter-spacing: -0.3px;
+    }
+    .sheet-subtitulo {
+      margin: 0;
+      font-size: 0.88rem;
+      line-height: 1.4;
+      color: var(--uber-muted);
+    }
+    .sheet-subtitulo b { color: var(--uber-white); }
+
+    .sheet-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--uber-black);
+      border: 2px solid var(--uber-border);
+      border-radius: var(--radius-md);
+      padding: 0 16px;
+      margin-bottom: 12px;
+      transition: border-color 0.15s;
+    }
+    .sheet-input-wrap:focus-within { border-color: var(--uber-white); }
+    .sheet-input-wrap.erro {
+      border-color: var(--uber-red);
+      animation: tremer 0.3s;
+    }
+    @keyframes tremer {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      75% { transform: translateX(6px); }
+    }
+    .sheet-input-wrap input {
+      flex: 1;
+      min-height: 64px;
+      margin: 0;
+      padding: 0;
+      border: none;
+      background: transparent;
+      font-size: 1.9rem;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+    }
+    .sheet-input-wrap input:focus { background: transparent; }
+    .sheet-affix {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--uber-muted);
+    }
+
+    .sheet-chips {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .sheet-chip {
+      min-height: 44px;
+      background: var(--uber-surface-elevated);
+      border: 1px solid var(--uber-border);
+      color: var(--uber-white);
+      border-radius: var(--radius-pill);
+      font-size: 0.85rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .sheet-chip:active { background: #333; }
+
+    .sheet-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .sheet-btn {
+      width: 100%;
+      min-height: 54px;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 1.02rem;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .sheet-btn:active { transform: scale(0.99); }
+    .sheet-btn-primary { background: var(--uber-white); color: var(--uber-black); }
+    .sheet-btn-blue    { background: var(--uber-blue); color: var(--uber-white); border-radius: var(--radius-pill); }
+    .sheet-btn-green   { background: var(--uber-green); color: var(--uber-black); }
+    .sheet-btn-danger  { background: var(--uber-red); color: var(--uber-white); }
+    .sheet-btn-ghost   { background: transparent; color: var(--uber-muted); min-height: 46px; font-weight: 700; }
+
     /* Toast */
     .uber-toast {
       position: fixed;
@@ -815,6 +967,24 @@
   </div>
 </nav>
 
+<!-- BOTTOM SHEET (substitui prompt/confirm do navegador) -->
+<div id="sheetOverlay" class="sheet-overlay" onclick="Sheet.fechar(null)"></div>
+<div id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitulo">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div id="sheetIcone" class="sheet-icone"></div>
+    <div>
+      <h3 id="sheetTitulo" class="sheet-titulo"></h3>
+      <p id="sheetSubtitulo" class="sheet-subtitulo"></p>
+    </div>
+  </div>
+  <div id="sheetCorpo"></div>
+  <div class="sheet-actions">
+    <button id="sheetBtnOk" class="sheet-btn sheet-btn-primary" onclick="Sheet.confirmarOk()">Confirmar</button>
+    <button id="sheetBtnCancel" class="sheet-btn sheet-btn-ghost" onclick="Sheet.fechar(null)">Cancelar</button>
+  </div>
+</div>
+
 <div id="toast" class="uber-toast"></div>
 
 <script>
@@ -921,16 +1091,149 @@
   };
 
   /* ==========================================================================
-     MÓDULO 3: UI CONTROLLER (INTERAÇÃO, NAVEGAÇÃO E RENDERIZAÇÃO)
+     MÓDULO 3: SHEET (BOTTOM SHEET ESTILO UBER — SUBSTITUI prompt/confirm)
+     Regra: o app NUNCA usa diálogos nativos do navegador (alert/prompt/confirm).
+     ========================================================================== */
+  const Sheet = {
+    _resolver: null,
+    _coletar: null,
+
+    el(id) { return document.getElementById(id); },
+
+    abrir({ icone = '', titulo = '', subtitulo = '', corpoHTML = '', textoOk = 'Confirmar',
+            textoCancelar = 'Cancelar', variante = 'primary', coletar = null, aoAbrir = null }) {
+      // Se já houver um sheet aberto, resolve o anterior como cancelado
+      if (this._resolver) this.fechar(null);
+
+      return new Promise(resolve => {
+        this._resolver = resolve;
+        this._coletar = coletar;
+
+        this.el('sheetIcone').textContent = icone;
+        this.el('sheetIcone').style.display = icone ? 'flex' : 'none';
+        this.el('sheetTitulo').textContent = titulo;
+        this.el('sheetSubtitulo').innerHTML = subtitulo;
+        this.el('sheetCorpo').innerHTML = corpoHTML;
+
+        const btnOk = this.el('sheetBtnOk');
+        btnOk.textContent = textoOk;
+        btnOk.className = `sheet-btn sheet-btn-${variante}`;
+        this.el('sheetBtnCancel').textContent = textoCancelar;
+
+        document.body.classList.add('sheet-aberto');
+        this.el('sheetOverlay').classList.add('open');
+        this.el('sheet').classList.add('open');
+
+        if (aoAbrir) setTimeout(aoAbrir, 180);
+      });
+    },
+
+    confirmarOk() {
+      if (!this._coletar) return this.fechar(true);
+      const valor = this._coletar();
+      if (valor === undefined) return; // validação falhou, mantém aberto
+      this.fechar(valor);
+    },
+
+    fechar(valor) {
+      this.el('sheetOverlay').classList.remove('open');
+      this.el('sheet').classList.remove('open');
+      document.body.classList.remove('sheet-aberto');
+      const resolver = this._resolver;
+      this._resolver = null;
+      this._coletar = null;
+      if (resolver) resolver(valor);
+    },
+
+    confirmar(opcoes) {
+      return this.abrir(opcoes).then(v => v === true);
+    },
+
+    /**
+     * Pede um número ao motorista. Retorna Promise<number|null>.
+     * null = cancelou. 0 = deixou em branco (se permitirVazio).
+     */
+    pedirValor({ valorInicial = '', placeholder = '0', prefixo = '', sufixo = '', atalhos = [],
+                 modoAtalho = 'somar', inteiro = false, permitirVazio = false, ...resto }) {
+      const chips = atalhos.length
+        ? `<div class="sheet-chips">${atalhos.map(v =>
+            `<button type="button" class="sheet-chip" data-valor="${v}">${modoAtalho === 'somar' ? '+' : ''}${prefixo ? prefixo + ' ' : ''}${v}</button>`
+          ).join('')}</div>`
+        : '';
+
+      const corpoHTML = `
+        <div class="sheet-input-wrap" id="sheetInputWrap">
+          ${prefixo ? `<span class="sheet-affix">${prefixo}</span>` : ''}
+          <input id="sheetInput" type="number" step="${inteiro ? '1' : '0.01'}"
+                 inputmode="${inteiro ? 'numeric' : 'decimal'}" placeholder="${placeholder}" value="${valorInicial}">
+          ${sufixo ? `<span class="sheet-affix">${sufixo}</span>` : ''}
+        </div>
+        ${chips}
+      `;
+
+      const coletar = () => {
+        const input = this.el('sheetInput');
+        const bruto = String(input.value || '').replace(',', '.').trim();
+        if (bruto === '') {
+          if (permitirVazio) return 0;
+          return this.tremer();
+        }
+        const num = parseFloat(bruto);
+        if (isNaN(num) || num < 0) return this.tremer();
+        return inteiro ? Math.round(num) : Number(num.toFixed(2));
+      };
+
+      const aoAbrir = () => {
+        const input = this.el('sheetInput');
+        input.focus();
+        input.select();
+        input.addEventListener('keydown', e => { if (e.key === 'Enter') this.confirmarOk(); });
+
+        document.querySelectorAll('.sheet-chip').forEach(chip => {
+          chip.addEventListener('click', () => {
+            const v = parseFloat(chip.dataset.valor);
+            const atual = parseFloat(String(input.value).replace(',', '.')) || 0;
+            input.value = modoAtalho === 'somar' ? (atual + v).toFixed(2).replace(/\.00$/, '') : v;
+            if (navigator.vibrate) navigator.vibrate(12);
+          });
+        });
+      };
+
+      return this.abrir({ ...resto, corpoHTML, coletar, aoAbrir });
+    },
+
+    tremer() {
+      const wrap = this.el('sheetInputWrap');
+      if (wrap) {
+        wrap.classList.remove('erro');
+        void wrap.offsetWidth; // reinicia a animação
+        wrap.classList.add('erro');
+      }
+      if (navigator.vibrate) navigator.vibrate([30, 40, 30]);
+      return undefined;
+    }
+  };
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && Sheet._resolver) Sheet.fechar(null);
+  });
+
+  /* ==========================================================================
+     MÓDULO 4: UI CONTROLLER (INTERAÇÃO, NAVEGAÇÃO E RENDERIZAÇÃO)
      ========================================================================== */
   const UIController = {
     periodoAtual: 'hoje',
     ultimoTextoWhatsApp: '',
     deferredPrompt: null,
 
+    hojeISO() {
+      // Data LOCAL (toISOString usa UTC e virava o dia às 21h no Brasil)
+      const d = new Date();
+      return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+    },
+
     iniciar() {
-      const hojeISO = new Date().toISOString().split('T')[0];
-      document.getElementById('dataTurno').value = hojeISO;
+      document.getElementById('dataTurno').value = this.hojeISO();
       document.getElementById('custoKm').value = StorageService.obterNumero(KEYS.CUSTO_KM, DEFAULTS.CUSTO_KM);
 
       const kml = StorageService.obterNumero(KEYS.CONSUMO_KML, 0);
@@ -941,6 +1244,11 @@
       this.renderizarTurnoVivo();
       this.atualizarPainel();
       this.renderizarHistorico();
+
+      // Mantém o cronômetro do turno ao vivo atualizado (sem re-render com sheet aberto)
+      setInterval(() => {
+        if (StorageService.obterTurnoAtivo() && !Sheet._resolver) this.renderizarTurnoVivo();
+      }, 30000);
     },
 
     lerNumero(id) {
@@ -1018,13 +1326,13 @@
           Anote gastos rápidos na rua:
         </div>
         <div class="quick-expense-grid">
-          <button class="quick-exp-btn" onclick="UIController.lancarGastoRapido('combustivel', 'Combustível / GNV')">
+          <button class="quick-exp-btn" onclick="UIController.lancarGastoRapido('combustivel', 'Combustível / GNV', '⛽')">
             <span>⛽</span>+ Combustível<br><small style="color:var(--uber-muted)">R$ ${(ativo.combustivel || 0).toFixed(0)}</small>
           </button>
-          <button class="quick-exp-btn" onclick="UIController.lancarGastoRapido('alimentacao', 'Alimentação / Água')">
+          <button class="quick-exp-btn" onclick="UIController.lancarGastoRapido('alimentacao', 'Alimentação / Água', '🍔')">
             <span>🍔</span>+ Refeição<br><small style="color:var(--uber-muted)">R$ ${(ativo.alimentacao || 0).toFixed(0)}</small>
           </button>
-          <button class="quick-exp-btn" onclick="UIController.lancarGastoRapido('outrosGastos', 'Pedágio / Lavagem / Outros')">
+          <button class="quick-exp-btn" onclick="UIController.lancarGastoRapido('outrosGastos', 'Pedágio / Lavagem / Outros', '🧼')">
             <span>🧼</span>+ Outros<br><small style="color:var(--uber-muted)">R$ ${(ativo.outrosGastos || 0).toFixed(0)}</small>
           </button>
         </div>
@@ -1040,15 +1348,27 @@
       `;
     },
 
-    iniciarTurnoNaPista() {
+    async iniciarTurnoNaPista() {
       const turnos = StorageService.obterTurnos();
       const ultimoComKm = turnos.find(t => t.kmFinal && t.kmFinal > 0);
       const sugestaoKm = ultimoComKm ? String(ultimoComKm.kmFinal) : '';
 
-      const kmStr = prompt('Qual o KM Inicial no painel do veículo agora?\n(Deixe em branco se preferir digitar só no final)', sugestaoKm);
-      if (kmStr === null) return;
+      const kmInicial = await Sheet.pedirValor({
+        icone: '🚗',
+        titulo: 'Iniciar turno',
+        subtitulo: ultimoComKm
+          ? `Confira o odômetro do painel. Último KM salvo: <b>${ultimoComKm.kmFinal} km</b>`
+          : 'Digite o KM que aparece no painel do carro agora. Pode deixar em branco e informar só no final.',
+        valorInicial: sugestaoKm,
+        placeholder: 'Ex: 45200',
+        sufixo: 'km',
+        inteiro: true,
+        permitirVazio: true,
+        textoOk: '▶ Ficar online',
+        variante: 'blue'
+      });
+      if (kmInicial === null) return;
 
-      const kmInicial = parseFloat(kmStr.replace(',', '.')) || 0;
       const agora = new Date();
       const horaFormatada = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
@@ -1065,15 +1385,22 @@
       this.notificar('Bom trabalho! Turno iniciado.');
     },
 
-    lancarGastoRapido(campo, nomeAmigavel) {
+    async lancarGastoRapido(campo, nomeAmigavel, icone) {
       const ativo = StorageService.obterTurnoAtivo();
       if (!ativo) return;
 
-      const valorStr = prompt(`Quanto você gastou agora com ${nomeAmigavel} (R$)?`);
-      if (!valorStr) return;
-
-      const valor = parseFloat(valorStr.replace(',', '.'));
-      if (isNaN(valor) || valor <= 0) return;
+      const acumulado = ativo[campo] || 0;
+      const valor = await Sheet.pedirValor({
+        icone: icone || '💸',
+        titulo: nomeAmigavel,
+        subtitulo: `Quanto você gastou agora? Já anotado neste turno: <b>R$ ${acumulado.toFixed(2)}</b>`,
+        placeholder: '0,00',
+        prefixo: 'R$',
+        atalhos: [10, 20, 50, 100],
+        textoOk: 'Adicionar gasto',
+        variante: 'primary'
+      });
+      if (valor === null || valor <= 0) return;
 
       ativo[campo] = Number(((ativo[campo] || 0) + valor).toFixed(2));
       StorageService.salvarTurnoAtivo(ativo);
@@ -1098,10 +1425,19 @@
       this.notificar('Dados do turno preenchidos! Informe o KM Final e Faturamento.');
     },
 
-    cancelarTurnoVivo() {
-      if (confirm('Cancelar o turno em andamento sem salvar?')) {
+    async cancelarTurnoVivo() {
+      const ok = await Sheet.confirmar({
+        icone: '⚠️',
+        titulo: 'Cancelar turno?',
+        subtitulo: 'O horário de início e os gastos rápidos anotados serão descartados. Nada será salvo no histórico.',
+        textoOk: 'Sim, cancelar turno',
+        textoCancelar: 'Continuar rodando',
+        variante: 'danger'
+      });
+      if (ok) {
         StorageService.salvarTurnoAtivo(null);
         this.renderizarTurnoVivo();
+        this.notificar('Turno cancelado.');
       }
     },
 
@@ -1356,16 +1692,24 @@
         : `🎯 Meta Hoje: <strong>R$ ${meta.toFixed(2)}</strong> (Falta R$ ${falta.toFixed(2)})`;
     },
 
-    editarMetaDiaria() {
+    async editarMetaDiaria() {
       const atual = StorageService.obterNumero(KEYS.META_DIARIA, DEFAULTS.META_DIARIA);
-      const entrada = prompt('Qual sua meta de LUCRO LÍQUIDO diário (R$)?', String(atual));
-      if (!entrada) return;
-      const val = parseFloat(entrada.replace(',', '.'));
-      if (!isNaN(val) && val > 0) {
-        StorageService.salvarValor(KEYS.META_DIARIA, val.toFixed(2));
-        this.atualizarPainel();
-        this.notificar('Meta diária atualizada!');
-      }
+      const val = await Sheet.pedirValor({
+        icone: '🎯',
+        titulo: 'Meta diária',
+        subtitulo: 'Quanto você quer colocar no bolso por dia, já descontando todos os gastos?',
+        valorInicial: String(atual),
+        prefixo: 'R$',
+        atalhos: [150, 200, 250, 300],
+        modoAtalho: 'definir',
+        textoOk: 'Salvar meta',
+        variante: 'green'
+      });
+      if (val === null || val <= 0) return;
+
+      StorageService.salvarValor(KEYS.META_DIARIA, val.toFixed(2));
+      this.atualizarPainel();
+      this.notificar('Meta diária atualizada!');
     },
 
     /* --- Histórico e Exportação --- */
@@ -1407,9 +1751,20 @@
       }).join('');
     },
 
-    excluirTurno(index) {
-      if (!confirm('Remover este registro do histórico?')) return;
+    async excluirTurno(index) {
       const turnos = StorageService.obterTurnos();
+      const alvo = turnos[index];
+      if (!alvo) return;
+
+      const ok = await Sheet.confirmar({
+        icone: '🗑️',
+        titulo: 'Excluir este turno?',
+        subtitulo: `${alvo.data} • ${alvo.kmTotal} km • Lucro <b>R$ ${alvo.lucroLiquido}</b>`,
+        textoOk: 'Excluir turno',
+        variante: 'danger'
+      });
+      if (!ok) return;
+
       turnos.splice(index, 1);
       StorageService.salvarTurnos(turnos);
       this.renderizarHistorico();
@@ -1417,14 +1772,22 @@
       this.notificar('Turno removido.');
     },
 
-    limparTodoHistorico() {
-      if (confirm('Apagar TODOS os turnos salvos neste aparelho?')) {
-        localStorage.removeItem(KEYS.TURNOS);
-        this.renderizarHistorico();
-        this.atualizarPainel();
-        document.getElementById('boxResultado').style.display = 'none';
-        this.notificar('Histórico apagado.');
-      }
+    async limparTodoHistorico() {
+      const total = StorageService.obterTurnos().length;
+      const ok = await Sheet.confirmar({
+        icone: '⚠️',
+        titulo: 'Apagar todo o histórico?',
+        subtitulo: `Os <b>${total} turno(s)</b> salvos neste celular serão apagados para sempre. Dica: exporte a planilha CSV antes.`,
+        textoOk: 'Apagar tudo',
+        variante: 'danger'
+      });
+      if (!ok) return;
+
+      localStorage.removeItem(KEYS.TURNOS);
+      this.renderizarHistorico();
+      this.atualizarPainel();
+      document.getElementById('boxResultado').style.display = 'none';
+      this.notificar('Histórico apagado.');
     },
 
     exportarCSV() {
