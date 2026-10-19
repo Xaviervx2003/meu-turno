@@ -792,6 +792,9 @@
         <div id="barraMetaFill" class="goal-fill"></div>
       </div>
     </div>
+
+    <!-- Banner Inteligente de Lembrete de Backup -->
+    <div id="bannerBackup" class="uber-card" style="display:none; border-color:var(--uber-yellow); background:rgba(255,192,67,0.08);"></div>
   </section>
 
   <!-- ========================================================================
@@ -931,13 +934,45 @@
   </section>
 
   <!-- ========================================================================
-       ABA 3: ATIVIDADE (HISTÓRICO DE TURNOS E EXPORTAÇÃO)
+       ABA 3: ATIVIDADE (HISTÓRICO DE TURNOS, BACKUP E PROTEÇÃO DE DADOS)
        ======================================================================== -->
   <section id="tab-historico" class="tab-view">
+    <!-- Central de Backup e Proteção Contra Perda de Dados -->
+    <div class="uber-card">
+      <div class="card-header-row">
+        <h2 class="card-title">🛡️ Proteção e Backup dos Dados</h2>
+        <span id="badgeCofreStatus" class="status-badge status-good">Cofre Ativo</span>
+      </div>
+      <div id="infoSegurancaDados" style="font-size:0.82rem; color:var(--uber-muted); margin-bottom:12px;"></div>
+
+      <div class="grid-2" style="margin-bottom:8px;">
+        <button type="button" class="btn-uber-primary" style="min-height:46px; font-size:0.88rem;" onclick="UIController.exportarBackupJSON()">
+          📤 Salvar Backup
+        </button>
+        <button type="button" class="btn-uber-ghost" style="min-height:46px; font-size:0.88rem;" onclick="document.getElementById('inputImportarBackup').click()">
+          📥 Restaurar Backup
+        </button>
+      </div>
+      <input type="file" id="inputImportarBackup" accept=".json,application/json" style="display:none" onchange="UIController.importarBackupArquivo(event)">
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+        <button type="button" class="chip-btn" onclick="UIController.togglePainel('painelPontosRestauracao')">
+          ⏪ Pontos de Restauração (Desfazer)
+        </button>
+        <button type="button" class="chip-btn" onclick="UIController.exportarCSV()">
+          📊 Planilha Excel (CSV)
+        </button>
+      </div>
+
+      <div id="painelPontosRestauracao" class="collapsible-panel" style="margin-top:10px; margin-bottom:0;">
+        <div id="listaPontosRestauracao"></div>
+      </div>
+    </div>
+
     <div class="uber-card">
       <div class="card-header-row">
         <h2 class="card-title">Histórico de Atividades</h2>
-        <button class="chip-btn" onclick="UIController.exportarCSV()">📥 Exportar Excel (CSV)</button>
+        <span id="lblTotalHistorico" style="font-size:0.75rem; color:var(--uber-muted);"></span>
       </div>
 
       <div id="listaHistorico"></div>
@@ -997,7 +1032,9 @@
     META_DIARIA: 'meu_turno_meta_diaria',
     CUSTO_KM: 'meu_turno_custo_km',
     CONSUMO_KML: 'meu_turno_consumo_kml',
-    PRECO_LITRO: 'meu_turno_preco_litro'
+    PRECO_LITRO: 'meu_turno_preco_litro',
+    RASCUNHO_FORM: 'meu_turno_rascunho_form',
+    ULTIMO_BACKUP: 'meu_turno_ultimo_backup'
   };
 
   const DEFAULTS = {
@@ -1008,13 +1045,25 @@
   const StorageService = {
     obterTurnos() {
       try {
-        return JSON.parse(localStorage.getItem(KEYS.TURNOS) || '[]');
+        const lista = JSON.parse(localStorage.getItem(KEYS.TURNOS) || '[]');
+        if (!Array.isArray(lista)) return [];
+        // Garante que turnos antigos sempre tenham um ID estável
+        return lista.map((t, idx) => (t && t.id ? t : { ...t, id: `legacy_${idx}_${t?.data || ''}` }));
       } catch {
         return [];
       }
     },
     salvarTurnos(lista) {
-      localStorage.setItem(KEYS.TURNOS, JSON.stringify(lista));
+      try {
+        localStorage.setItem(KEYS.TURNOS, JSON.stringify(lista));
+        Cofre.espelharTurnos(lista);
+        return true;
+      } catch (err) {
+        if (typeof UIController !== 'undefined') {
+          UIController.notificar('Memória do navegador cheia! Exporte um backup.');
+        }
+        return false;
+      }
     },
     obterTurnoAtivo() {
       try {
@@ -1024,18 +1073,258 @@
       }
     },
     salvarTurnoAtivo(dados) {
-      if (!dados) {
-        localStorage.removeItem(KEYS.TURNO_ATIVO);
-      } else {
-        localStorage.setItem(KEYS.TURNO_ATIVO, JSON.stringify(dados));
-      }
+      try {
+        if (!dados) {
+          localStorage.removeItem(KEYS.TURNO_ATIVO);
+        } else {
+          localStorage.setItem(KEYS.TURNO_ATIVO, JSON.stringify(dados));
+        }
+        Cofre.espelharTurnoAtivo(dados);
+      } catch {}
     },
     obterNumero(chave, padrao) {
       const val = parseFloat(localStorage.getItem(chave));
       return isNaN(val) ? padrao : val;
     },
     salvarValor(chave, valor) {
-      localStorage.setItem(chave, String(valor));
+      try {
+        localStorage.setItem(chave, String(valor));
+      } catch {}
+    }
+  };
+
+  /* ==========================================================================
+     MÓDULO 1.1: COFRE DUPLO (INDEXEDDB + PONTOS DE RESTAURAÇÃO AUTOMÁTICOS)
+     Protege contra limpeza parcial de localStorage e exclusões acidentais.
+     ========================================================================== */
+  const Cofre = {
+    DB_NAME: 'meu_turno_cofre_db',
+    DB_VERSION: 1,
+    _dbPromise: null,
+
+    abrirDB() {
+      if (this._dbPromise) return this._dbPromise;
+      if (!('indexedDB' in window)) return Promise.resolve(null);
+
+      this._dbPromise = new Promise((resolve) => {
+        try {
+          const req = indexedDB.open(this.DB_NAME, this.DB_VERSION);
+          req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains('espelho')) {
+              db.createObjectStore('espelho', { keyPath: 'chave' });
+            }
+            if (!db.objectStoreNames.contains('pontos')) {
+              db.createObjectStore('pontos', { keyPath: 'id' });
+            }
+          };
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => resolve(null);
+        } catch {
+          resolve(null);
+        }
+      });
+      return this._dbPromise;
+    },
+
+    async espelharTurnos(lista) {
+      const db = await this.abrirDB();
+      if (!db) return;
+      try {
+        const tx = db.transaction('espelho', 'readwrite');
+        tx.objectStore('espelho').put({
+          chave: KEYS.TURNOS,
+          valor: lista,
+          atualizadoEm: Date.now()
+        });
+      } catch {}
+    },
+
+    async espelharTurnoAtivo(dados) {
+      const db = await this.abrirDB();
+      if (!db) return;
+      try {
+        const tx = db.transaction('espelho', 'readwrite');
+        tx.objectStore('espelho').put({
+          chave: KEYS.TURNO_ATIVO,
+          valor: dados,
+          atualizadoEm: Date.now()
+        });
+      } catch {}
+    },
+
+    async verificarAutoRecuperacao() {
+      const db = await this.abrirDB();
+      if (!db) return false;
+      try {
+        const turnosLocal = StorageService.obterTurnos();
+        const espelhoTurnos = await new Promise((resolve) => {
+          const tx = db.transaction('espelho', 'readonly');
+          const req = tx.objectStore('espelho').get(KEYS.TURNOS);
+          req.onsuccess = () => resolve(req.result?.valor || []);
+          req.onerror = () => resolve([]);
+        });
+
+        // Se o localStorage estiver vazio mas o Cofre IndexedDB tiver turnos salvos, recupera!
+        if (turnosLocal.length === 0 && Array.isArray(espelhoTurnos) && espelhoTurnos.length > 0) {
+          localStorage.setItem(KEYS.TURNOS, JSON.stringify(espelhoTurnos));
+          return espelhoTurnos.length;
+        }
+        // Caso contrário, garante que o Cofre tenha a versão atual do localStorage
+        if (turnosLocal.length > 0 && espelhoTurnos.length === 0) {
+          await this.espelharTurnos(turnosLocal);
+        }
+      } catch {}
+      return 0;
+    },
+
+    async criarPonto(motivo) {
+      const db = await this.abrirDB();
+      if (!db) return;
+      const turnosAtuais = StorageService.obterTurnos();
+      if (turnosAtuais.length === 0) return;
+
+      try {
+        const agora = new Date();
+        const ponto = {
+          id: Date.now(),
+          motivo,
+          dataHora: agora.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }),
+          qtdTurnos: turnosAtuais.length,
+          turnos: turnosAtuais
+        };
+
+        const tx = db.transaction('pontos', 'readwrite');
+        const store = tx.objectStore('pontos');
+        store.put(ponto);
+
+        // Mantém apenas os 8 pontos de restauração mais recentes
+        const todos = await this.listarPontos();
+        if (todos.length > 8) {
+          const txDel = db.transaction('pontos', 'readwrite');
+          const stDel = txDel.objectStore('pontos');
+          todos.slice(8).forEach(p => stDel.delete(p.id));
+        }
+      } catch {}
+    },
+
+    async listarPontos() {
+      const db = await this.abrirDB();
+      if (!db) return [];
+      return new Promise((resolve) => {
+        try {
+          const tx = db.transaction('pontos', 'readonly');
+          const req = tx.objectStore('pontos').getAll();
+          req.onsuccess = () => {
+            const lista = Array.isArray(req.result) ? req.result : [];
+            resolve(lista.sort((a, b) => b.id - a.id));
+          };
+          req.onerror = () => resolve([]);
+        } catch {
+          resolve([]);
+        }
+      });
+    }
+  };
+
+  /* ==========================================================================
+     MÓDULO 1.2: RASCUNHO AUTOMÁTICO (SALVA CADA DÍGITO DO FORMULÁRIO)
+     Se fechar o navegador ou acabar a bateria antes de salvar, nada se perde.
+     ========================================================================== */
+  const Rascunho = {
+    CAMPOS: [
+      'horasTrabalhadas', 'kmInicial', 'kmFinal', 'kmTotalInput', 'corridas',
+      'ganhoUber', 'ganho99', 'ganhoOutros', 'faturamento',
+      'combustivel', 'alimentacao', 'diariaCarro', 'outrosGastos'
+    ],
+
+    iniciarMonitoramento() {
+      this.restaurar();
+      this.CAMPOS.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.addEventListener('input', () => this.salvar());
+        }
+      });
+    },
+
+    salvar() {
+      try {
+        const dados = {};
+        let temValor = false;
+        this.CAMPOS.forEach(id => {
+          const el = document.getElementById(id);
+          if (el && el.value !== '') {
+            dados[id] = el.value;
+            temValor = true;
+          }
+        });
+        if (temValor) {
+          localStorage.setItem(KEYS.RASCUNHO_FORM, JSON.stringify(dados));
+        } else {
+          localStorage.removeItem(KEYS.RASCUNHO_FORM);
+        }
+      } catch {}
+    },
+
+    restaurar() {
+      try {
+        const salvo = JSON.parse(localStorage.getItem(KEYS.RASCUNHO_FORM) || 'null');
+        if (!salvo) return;
+        Object.entries(salvo).forEach(([id, valor]) => {
+          const el = document.getElementById(id);
+          if (el && valor !== undefined) el.value = valor;
+        });
+      } catch {}
+    },
+
+    limpar() {
+      localStorage.removeItem(KEYS.RASCUNHO_FORM);
+      this.CAMPOS.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+    }
+  };
+
+  /* ==========================================================================
+     MÓDULO 1.3: STORAGE GUARD (PERSISTÊNCIA DO SISTEMA E ALERTA DE BACKUP)
+     ========================================================================== */
+  const StorageGuard = {
+    persistente: false,
+
+    async pedirPersistencia() {
+      try {
+        if (navigator.storage && navigator.storage.persist) {
+          this.persistente = await navigator.storage.persist();
+        }
+      } catch {}
+      return this.persistente;
+    },
+
+    async verificarStatusPersistencia() {
+      try {
+        if (navigator.storage && navigator.storage.persisted) {
+          this.persistente = await navigator.storage.persisted();
+        }
+      } catch {}
+      return this.persistente;
+    },
+
+    registrarBackupExterno(qtdTurnos) {
+      StorageService.salvarValor(KEYS.ULTIMO_BACKUP, JSON.stringify({
+        timestamp: Date.now(),
+        dataFormatada: new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }),
+        qtdTurnos
+      }));
+    },
+
+    obterInfoUltimoBackup() {
+      try {
+        return JSON.parse(localStorage.getItem(KEYS.ULTIMO_BACKUP) || 'null');
+      } catch {
+        return null;
+      }
     }
   };
 
@@ -1232,7 +1521,7 @@
       return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
     },
 
-    iniciar() {
+    async iniciar() {
       document.getElementById('dataTurno').value = this.hojeISO();
       document.getElementById('custoKm').value = StorageService.obterNumero(KEYS.CUSTO_KM, DEFAULTS.CUSTO_KM);
 
@@ -1241,14 +1530,27 @@
       if (kml > 0) document.getElementById('consumoKmL').value = kml;
       if (preco > 0) document.getElementById('precoLitro').value = preco;
 
-      this.renderizarTurnoVivo();
-      this.atualizarPainel();
-      this.renderizarHistorico();
+      Rascunho.iniciarMonitoramento();
+      await StorageGuard.verificarStatusPersistencia();
+
+      const recuperados = await Cofre.verificarAutoRecuperacao();
+      if (recuperados > 0) {
+        this.notificar(`🛡️ ${recuperados} turno(s) recuperados automaticamente do Cofre!`);
+      }
+
+      this.atualizarTudo();
 
       // Mantém o cronômetro do turno ao vivo atualizado (sem re-render com sheet aberto)
       setInterval(() => {
         if (StorageService.obterTurnoAtivo() && !Sheet._resolver) this.renderizarTurnoVivo();
       }, 30000);
+    },
+
+    atualizarTudo() {
+      this.renderizarTurnoVivo();
+      this.atualizarPainel();
+      this.renderizarHistorico();
+      this.renderizarSegurancaDados();
     },
 
     lerNumero(id) {
@@ -1491,7 +1793,7 @@
       return `${d}/${m}/${y}`;
     },
 
-    salvarFechamento() {
+    async salvarFechamento() {
       const entrada = {
         dataISO: document.getElementById('dataTurno').value,
         horas: this.lerNumero('horasTrabalhadas'),
@@ -1544,16 +1846,34 @@
       };
 
       const turnos = StorageService.obterTurnos();
+
+      // Evita turno duplicado por toque duplo / salvar duas vezes o mesmo formulário
+      const assinatura = [entrada.dataISO, calc.kmTotal, entrada.faturamento, calc.custosTotais].join('|');
+      const duplicado = turnos.find(t =>
+        [t.dataISO, t.kmTotal, t.faturamento, t.custosTotais].join('|') === assinatura
+      );
+      if (duplicado) {
+        const salvarMesmoAssim = await Sheet.confirmar({
+          icone: '🧐',
+          titulo: 'Esse turno já foi salvo',
+          subtitulo: `Já existe um fechamento de <b>${duplicado.data}</b> com os mesmos valores (Lucro <b>R$ ${duplicado.lucroLiquido}</b>). Salvar outra vez vai duplicar seus ganhos.`,
+          textoOk: 'Salvar mesmo assim',
+          textoCancelar: 'Não salvar',
+          variante: 'danger'
+        });
+        if (!salvarMesmoAssim) return;
+      }
+
       turnos.unshift(registro);
-      StorageService.salvarTurnos(turnos);
+      if (!StorageService.salvarTurnos(turnos)) return; // falha já notificada; mantém formulário e turno ao vivo
 
       // Se havia um turno ao vivo aberto, encerra-o automaticamente
       StorageService.salvarTurnoAtivo(null);
+      Rascunho.limpar();
+      StorageGuard.pedirPersistencia();
 
       this.exibirRecibo(registro, calc, avaliacao);
-      this.renderizarTurnoVivo();
-      this.atualizarPainel();
-      this.renderizarHistorico();
+      this.atualizarTudo();
       this.notificar('Fechamento salvo com sucesso!');
     },
 
@@ -1737,7 +2057,7 @@
               <span class="act-title">${item.data} • ${item.kmTotal} km</span>
               <div style="display:flex; align-items:center; gap:10px;">
                 <span class="act-net">R$ ${item.lucroLiquido}</span>
-                <button class="chip-btn" style="padding:3px 8px;" onclick="UIController.excluirTurno(${idx})" title="Excluir">✕</button>
+                <button class="chip-btn" style="padding:3px 8px;" onclick="UIController.excluirTurno('${item.id}')" title="Excluir">✕</button>
               </div>
             </div>
             <div class="act-meta">
@@ -1751,41 +2071,42 @@
       }).join('');
     },
 
-    async excluirTurno(index) {
+    async excluirTurno(id) {
       const turnos = StorageService.obterTurnos();
-      const alvo = turnos[index];
+      const alvo = turnos.find(t => String(t.id) === String(id));
       if (!alvo) return;
 
       const ok = await Sheet.confirmar({
         icone: '🗑️',
         titulo: 'Excluir este turno?',
-        subtitulo: `${alvo.data} • ${alvo.kmTotal} km • Lucro <b>R$ ${alvo.lucroLiquido}</b>`,
+        subtitulo: `${alvo.data} • ${alvo.kmTotal} km • Lucro <b>R$ ${alvo.lucroLiquido}</b><br>Se errar, dá pra desfazer em <b>Pontos de restauração</b>.`,
         textoOk: 'Excluir turno',
         variante: 'danger'
       });
       if (!ok) return;
 
-      turnos.splice(index, 1);
-      StorageService.salvarTurnos(turnos);
-      this.renderizarHistorico();
-      this.atualizarPainel();
+      await Cofre.criarPonto(`Antes de excluir turno de ${alvo.data}`);
+      StorageService.salvarTurnos(turnos.filter(t => String(t.id) !== String(id)));
+      this.atualizarTudo();
       this.notificar('Turno removido.');
     },
 
     async limparTodoHistorico() {
       const total = StorageService.obterTurnos().length;
+      if (total === 0) return this.notificar('O histórico já está vazio.');
+
       const ok = await Sheet.confirmar({
         icone: '⚠️',
         titulo: 'Apagar todo o histórico?',
-        subtitulo: `Os <b>${total} turno(s)</b> salvos neste celular serão apagados para sempre. Dica: exporte a planilha CSV antes.`,
+        subtitulo: `Os <b>${total} turno(s)</b> serão apagados deste celular. Uma cópia fica guardada em <b>Pontos de restauração</b>, mas o ideal é salvar um backup antes.`,
         textoOk: 'Apagar tudo',
         variante: 'danger'
       });
       if (!ok) return;
 
-      localStorage.removeItem(KEYS.TURNOS);
-      this.renderizarHistorico();
-      this.atualizarPainel();
+      await Cofre.criarPonto(`Antes de apagar todo o histórico (${total} turnos)`);
+      StorageService.salvarTurnos([]);
+      this.atualizarTudo();
       document.getElementById('boxResultado').style.display = 'none';
       this.notificar('Histórico apagado.');
     },
@@ -1813,10 +2134,191 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `meu-turno-uber-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.download = `meu-turno-uber-${this.hojeISO()}.csv`;
       a.click();
       URL.revokeObjectURL(url);
       this.notificar('Planilha CSV baixada!');
+    },
+
+    /* --- Segurança de Dados, Backup Completo (JSON) e Pontos de Restauração --- */
+    async renderizarSegurancaDados() {
+      const turnos = StorageService.obterTurnos();
+      const infoBackup = StorageGuard.obterInfoUltimoBackup();
+      const lblTotal = document.getElementById('lblTotalHistorico');
+      if (lblTotal) lblTotal.textContent = `${turnos.length} registro(s)`;
+
+      const textoUltimoBackup = infoBackup
+        ? `Último backup externo: <b style="color:#fff;">${infoBackup.dataFormatada}</b> (${infoBackup.qtdTurnos} turnos)`
+        : `<span style="color:var(--uber-yellow);">Você ainda não salvou um arquivo de backup externo.</span>`;
+
+      const elInfo = document.getElementById('infoSegurancaDados');
+      if (elInfo) {
+        elInfo.innerHTML = `
+          <div>• <b>Cofre Duplo Local:</b> Salvo em <code>localStorage</code> + <code>IndexedDB</code> (${turnos.length} turnos).</div>
+          <div style="margin-top:4px;">• ${textoUltimoBackup}</div>
+        `;
+      }
+
+      // Banner inteligente na tela inicial se tiver 5+ turnos novos sem backup externo
+      const banner = document.getElementById('bannerBackup');
+      if (banner) {
+        const turnosSemBackup = infoBackup ? (turnos.length - (infoBackup.qtdTurnos || 0)) : turnos.length;
+        if (turnos.length > 0 && turnosSemBackup >= 5) {
+          banner.style.display = 'block';
+          banner.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+              <div style="font-size:0.82rem;">
+                <strong style="color:var(--uber-yellow);">🛡️ Proteja seus ganhos</strong><br>
+                <span style="color:var(--uber-muted);">Você tem ${turnosSemBackup} turnos novos sem backup externo.</span>
+              </div>
+              <button class="chip-btn" style="background:var(--uber-yellow); color:#000; border:none; padding:8px 12px;" onclick="UIController.exportarBackupJSON()">
+                Salvar Backup
+              </button>
+            </div>
+          `;
+        } else {
+          banner.style.display = 'none';
+        }
+      }
+
+      // Lista de pontos de restauração automáticos (IndexedDB)
+      const contPontos = document.getElementById('listaPontosRestauracao');
+      if (!contPontos) return;
+      const pontos = await Cofre.listarPontos();
+      if (pontos.length === 0) {
+        contPontos.innerHTML = `<div style="font-size:0.78rem; color:var(--uber-muted);">Os pontos de restauração aparecem aqui automaticamente antes de qualquer exclusão.</div>`;
+        return;
+      }
+
+      contPontos.innerHTML = pontos.map(p => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--uber-border); font-size:0.78rem;">
+          <div>
+            <b style="color:#fff;">${p.motivo}</b><br>
+            <span style="color:var(--uber-muted);">${p.dataHora} • ${p.qtdTurnos} turno(s)</span>
+          </div>
+          <button type="button" class="chip-btn" onclick="UIController.restaurarPonto(${p.id})">Restaurar</button>
+        </div>
+      `).join('');
+    },
+
+    async exportarBackupJSON() {
+      const turnos = StorageService.obterTurnos();
+      if (turnos.length === 0) {
+        this.notificar('Nenhum turno salvo para fazer backup.');
+        return;
+      }
+
+      const pacote = {
+        app: 'meu-turno',
+        versao: 2,
+        exportadoEm: new Date().toISOString(),
+        configuracoes: {
+          metaDiaria: StorageService.obterNumero(KEYS.META_DIARIA, DEFAULTS.META_DIARIA),
+          custoKm: StorageService.obterNumero(KEYS.CUSTO_KM, DEFAULTS.CUSTO_KM),
+          consumoKmL: StorageService.obterNumero(KEYS.CONSUMO_KML, 0),
+          precoLitro: StorageService.obterNumero(KEYS.PRECO_LITRO, 0)
+        },
+        turnos
+      };
+
+      const jsonStr = JSON.stringify(pacote, null, 2);
+      const nomeArquivo = `backup-meu-turno-${this.hojeISO()}.json`;
+      const arquivo = new File([jsonStr], nomeArquivo, { type: 'application/json' });
+
+      StorageGuard.registrarBackupExterno(turnos.length);
+      this.renderizarSegurancaDados();
+
+      // Se o celular suportar Compartilhamento Nativo de Arquivo (WhatsApp, Drive, Arquivos), oferece!
+      if (navigator.canShare && navigator.canShare({ files: [arquivo] })) {
+        try {
+          await navigator.share({
+            title: 'Backup Meu Turno',
+            text: `Backup com ${turnos.length} turno(s) do app Meu Turno.`,
+            files: [arquivo]
+          });
+          this.notificar('Backup compartilhado com sucesso!');
+          return;
+        } catch {}
+      }
+
+      // Fallback padrão: download direto do arquivo .json
+      const url = URL.createObjectURL(arquivo);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nomeArquivo;
+      a.click();
+      URL.revokeObjectURL(url);
+      this.notificar('Arquivo de Backup salvo no aparelho!');
+    },
+
+    async importarBackupArquivo(event) {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      if (!file) return;
+
+      try {
+        const texto = await file.text();
+        const dados = JSON.parse(texto);
+        const listaImportada = Array.isArray(dados) ? dados : (Array.isArray(dados.turnos) ? dados.turnos : null);
+
+        if (!listaImportada || listaImportada.length === 0) {
+          this.notificar('Arquivo inválido ou sem turnos.');
+          return;
+        }
+
+        const atuais = StorageService.obterTurnos();
+        const ok = await Sheet.confirmar({
+          icone: '📥',
+          titulo: 'Restaurar Backup',
+          subtitulo: `O arquivo contém <b>${listaImportada.length} turno(s)</b>. Eles serão mesclados com seus <b>${atuais.length} turno(s)</b> atuais sem duplicar registros.`,
+          textoOk: 'Restaurar agora',
+          variante: 'green'
+        });
+        if (!ok) return;
+
+        await Cofre.criarPonto(`Antes de restaurar backup (${atuais.length} turnos)`);
+
+        // Mescla sem duplicar pelo id ou assinatura (data + kmTotal + faturamento)
+        const mapa = new Map();
+        [...listaImportada, ...atuais].forEach((t, idx) => {
+          if (!t) return;
+          const chave = t.id ? String(t.id) : `${t.data}_${t.kmTotal}_${t.faturamento}_${idx}`;
+          if (!mapa.has(chave)) mapa.set(chave, t);
+        });
+
+        const mesclados = Array.from(mapa.values());
+        StorageService.salvarTurnos(mesclados);
+
+        if (dados.configuracoes) {
+          if (dados.configuracoes.metaDiaria) StorageService.salvarValor(KEYS.META_DIARIA, dados.configuracoes.metaDiaria);
+          if (dados.configuracoes.custoKm) StorageService.salvarValor(KEYS.CUSTO_KM, dados.configuracoes.custoKm);
+        }
+
+        StorageGuard.registrarBackupExterno(mesclados.length);
+        this.atualizarTudo();
+        this.notificar(`${mesclados.length} turno(s) disponíveis após restauração!`);
+      } catch {
+        this.notificar('Erro ao ler o arquivo de backup.');
+      }
+    },
+
+    async restaurarPonto(idPonto) {
+      const pontos = await Cofre.listarPontos();
+      const alvo = pontos.find(p => p.id === idPonto);
+      if (!alvo) return;
+
+      const ok = await Sheet.confirmar({
+        icone: '⏪',
+        titulo: 'Voltar para este ponto?',
+        subtitulo: `Restaurar <b>${alvo.qtdTurnos} turno(s)</b> do ponto <i>"${alvo.motivo}"</i> (${alvo.dataHora})?`,
+        textoOk: 'Sim, restaurar',
+        variante: 'green'
+      });
+      if (!ok) return;
+
+      StorageService.salvarTurnos(alvo.turnos);
+      this.atualizarTudo();
+      this.notificar('Turnos restaurados com sucesso!');
     },
 
     async instalarPWA() {
@@ -1829,6 +2331,16 @@
   };
 
   window.addEventListener('DOMContentLoaded', () => UIController.iniciar());
+
+  // Outra aba/janela alterou os dados → recarrega a tela para não sobrescrever com dados velhos
+  window.addEventListener('storage', (e) => {
+    if (!e.key || Object.values(KEYS).includes(e.key)) {
+      UIController.renderizarTurnoVivo();
+      UIController.atualizarPainel();
+      UIController.renderizarHistorico();
+      UIController.renderizarSegurancaDados();
+    }
+  });
 
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
