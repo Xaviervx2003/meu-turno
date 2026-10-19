@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#121212">
+  <title>Fechamento de Turno</title>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: #121212; color: #fff; margin: 0; padding: 16px; display: flex; justify-content: center; }
+    .container { width: 100%; max-width: 480px; }
+    h1 { font-size: 1.3rem; margin-bottom: 1rem; color: #00e676; text-align: center; }
+    .card { background: #1e1e1e; border-radius: 12px; padding: 16px; margin-bottom: 14px; border: 1px solid #2a2a2a; }
+    label { display: block; font-size: 0.8rem; color: #aaa; margin-bottom: 4px; text-transform: uppercase; font-weight: 600; }
+    input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #292929; color: #fff; font-size: 1rem; margin-bottom: 12px; }
+    input:focus { border-color: #00e676; outline: none; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    button { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; }
+    .btn-salvar { background: #00e676; color: #000; margin-top: 8px; }
+    .btn-salvar:active { background: #00b35c; }
+    .resultado { display: none; margin-top: 14px; background: #252525; padding: 14px; border-radius: 8px; }
+    .metric { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #333; font-size: 0.95rem; }
+    .metric:last-child { border-bottom: none; font-weight: bold; color: #00e676; font-size: 1.05rem; }
+    .historico-item { background: #1e1e1e; border-left: 4px solid #00e676; padding: 10px; border-radius: 6px; margin-bottom: 8px; font-size: 0.85rem; }
+    .limpar-btn { background: transparent; color: #ff5252; font-size: 0.8rem; padding: 6px; border: 1px solid #ff5252; border-radius: 4px; margin-top: 12px; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Fechamento de Turno</h1>
+
+  <div class="card">
+    <div class="grid">
+      <div>
+        <label>KM Inicial</label>
+        <input type="number" id="kmInicial" inputmode="numeric" placeholder="Ex: 45200">
+      </div>
+      <div>
+        <label>KM Final</label>
+        <input type="number" id="kmFinal" inputmode="numeric" placeholder="Ex: 45380">
+      </div>
+    </div>
+
+    <div class="grid">
+      <div>
+        <label>Total Faturado (R$)</label>
+        <input type="number" id="faturamento" step="0.01" inputmode="decimal" placeholder="0.00">
+      </div>
+      <div>
+        <label>Qtd. Corridas</label>
+        <input type="number" id="corridas" inputmode="numeric" placeholder="Ex: 14">
+      </div>
+    </div>
+
+    <div class="grid">
+      <div>
+        <label>Combustível (R$)</label>
+        <input type="number" id="combustivel" step="0.01" inputmode="decimal" placeholder="0.00">
+      </div>
+      <div>
+        <label>Outros Gastos (R$)</label>
+        <input type="number" id="outrosGastos" step="0.01" inputmode="decimal" placeholder="0.00">
+      </div>
+    </div>
+
+    <label>Manutenção estimada por KM (R$)</label>
+    <input type="number" id="custoKm" step="0.01" value="0.15">
+
+    <button class="btn-salvar" onclick="fecharTurno()">Calcular e Salvar Turno</button>
+
+    <div id="boxResultado" class="resultado"></div>
+  </div>
+
+  <h2 style="font-size: 1rem; color: #aaa; margin: 16px 0 8px;">Histórico Recente</h2>
+  <div id="listaHistorico"></div>
+  <button class="limpar-btn" onclick="limparDados()">Limpar histórico local</button>
+</div>
+
+<script>
+  function fecharTurno() {
+    const kmIni = parseFloat(document.getElementById('kmInicial').value) || 0;
+    const kmFim = parseFloat(document.getElementById('kmFinal').value) || 0;
+    const fat = parseFloat(document.getElementById('faturamento').value) || 0;
+    const qtd = parseInt(document.getElementById('corridas').value) || 0;
+    const comb = parseFloat(document.getElementById('combustivel').value) || 0;
+    const outros = parseFloat(document.getElementById('outrosGastos').value) || 0;
+    const manutKm = parseFloat(document.getElementById('custoKm').value) || 0;
+
+    const kmTotal = kmFim > kmIni ? kmFim - kmIni : 0;
+    const provisaoManut = kmTotal * manutKm;
+    const custosTotais = comb + outros + provisaoManut;
+    const lucroLiquido = fat - custosTotais;
+
+    const brutoKm = kmTotal > 0 ? (fat / kmTotal).toFixed(2) : "0.00";
+    const liquidoKm = kmTotal > 0 ? (lucroLiquido / kmTotal).toFixed(2) : "0.00";
+    const ticketMedio = qtd > 0 ? (fat / qtd).toFixed(2) : "0.00";
+
+    const box = document.getElementById('boxResultado');
+    box.style.display = 'block';
+    box.innerHTML = `
+      <div class="metric"><span>KM Total Rodado:</span><span>${kmTotal} km</span></div>
+      <div class="metric"><span>Custo Total Operacional:</span><span>R$ ${custosTotais.toFixed(2)}</span></div>
+      <div class="metric"><span>Bruto por KM:</span><span>R$ ${brutoKm}</span></div>
+      <div class="metric"><span>Líquido por KM:</span><span>R$ ${liquidoKm}</span></div>
+      <div class="metric"><span>Ticket Médio:</span><span>R$ ${ticketMedio}</span></div>
+      <div class="metric"><span>Lucro Líquido Final:</span><span>R$ ${lucroLiquido.toFixed(2)}</span></div>
+    `;
+
+    const registro = {
+      data: new Date().toLocaleDateString('pt-BR'),
+      kmTotal,
+      lucroLiquido: lucroLiquido.toFixed(2),
+      liquidoKm
+    };
+
+    let historico = JSON.parse(localStorage.getItem('turnos_app') || '[]');
+    historico.unshift(registro);
+    localStorage.setItem('turnos_app', JSON.stringify(historico));
+    carregarHistorico();
+  }
+
+  function carregarHistorico() {
+    const historico = JSON.parse(localStorage.getItem('turnos_app') || '[]');
+    const container = document.getElementById('listaHistorico');
+    container.innerHTML = historico.slice(0, 5).map(item => `
+      <div class="historico-item">
+        <strong>${item.data}</strong> — ${item.kmTotal} km rodados<br>
+        Lucro: <b>R$ ${item.lucroLiquido}</b> (R$ ${item.liquidoKm}/km)
+      </div>
+    `).join('') || '<div style="color:#666; font-size:0.85rem;">Nenhum turno registrado ainda.</div>';
+  }
+
+  function limparDados() {
+    if (confirm('Tem certeza que deseja apagar o histórico salvo no celular?')) {
+      localStorage.removeItem('turnos_app');
+      carregarHistorico();
+      document.getElementById('boxResultado').style.display = 'none';
+    }
+  }
+
+  carregarHistorico();
+</script>
+</body>
+</html>
