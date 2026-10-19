@@ -2,144 +2,1144 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#121212">
-  <title>Fechamento de Turno</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Meu Turno">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <title>Meu Turno — Controle Uber, 99 e Entregas</title>
   <style>
-    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background: #121212; color: #fff; margin: 0; padding: 16px; display: flex; justify-content: center; }
-    .container { width: 100%; max-width: 480px; }
-    h1 { font-size: 1.3rem; margin-bottom: 1rem; color: #00e676; text-align: center; }
-    .card { background: #1e1e1e; border-radius: 12px; padding: 16px; margin-bottom: 14px; border: 1px solid #2a2a2a; }
-    label { display: block; font-size: 0.8rem; color: #aaa; margin-bottom: 4px; text-transform: uppercase; font-weight: 600; }
-    input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #292929; color: #fff; font-size: 1rem; margin-bottom: 12px; }
-    input:focus { border-color: #00e676; outline: none; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    button { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; }
-    .btn-salvar { background: #00e676; color: #000; margin-top: 8px; }
-    .btn-salvar:active { background: #00b35c; }
-    .resultado { display: none; margin-top: 14px; background: #252525; padding: 14px; border-radius: 8px; }
-    .metric { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #333; font-size: 0.95rem; }
-    .metric:last-child { border-bottom: none; font-weight: bold; color: #00e676; font-size: 1.05rem; }
-    .historico-item { background: #1e1e1e; border-left: 4px solid #00e676; padding: 10px; border-radius: 6px; margin-bottom: 8px; font-size: 0.85rem; }
-    .limpar-btn { background: transparent; color: #ff5252; font-size: 0.8rem; padding: 6px; border: 1px solid #ff5252; border-radius: 4px; margin-top: 12px; }
+    :root {
+      --bg: #0f1115;
+      --card: #181b20;
+      --card-alt: #20242b;
+      --border: #2a2f3a;
+      --primary: #00e676;
+      --primary-dark: #00c853;
+      --primary-soft: rgba(0, 230, 118, 0.12);
+      --warning: #ffb300;
+      --danger: #ff5252;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 12px 12px 48px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 500px;
+    }
+
+    /* Header */
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      padding: 4px 2px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: var(--primary-soft);
+      border: 1px solid rgba(0, 230, 118, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      color: var(--primary);
+      font-size: 1.1rem;
+    }
+    .brand h1 {
+      font-size: 1.25rem;
+      margin: 0;
+      color: var(--text);
+      letter-spacing: -0.3px;
+    }
+    .brand span {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    .btn-install {
+      display: none;
+      background: var(--primary-soft);
+      color: var(--primary);
+      border: 1px solid var(--primary);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      width: auto;
+    }
+
+    /* Cards & Sections */
+    .card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 14px;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin: 0 0 12px 0;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-title small {
+      color: var(--muted);
+      font-weight: 500;
+      text-transform: none;
+      font-size: 0.75rem;
+    }
+
+    /* Period Tabs in Dashboard */
+    .period-tabs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      background: var(--bg);
+      padding: 4px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+      border: 1px solid var(--border);
+    }
+    .period-tab {
+      background: transparent;
+      color: var(--muted);
+      border: none;
+      padding: 8px 4px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      border-radius: 7px;
+      cursor: pointer;
+    }
+    .period-tab.active {
+      background: var(--card-alt);
+      color: var(--primary);
+      border: 1px solid rgba(0, 230, 118, 0.3);
+    }
+
+    /* Dashboard KPIs */
+    .kpi-hero {
+      background: linear-gradient(135deg, rgba(0, 230, 118, 0.14), rgba(0, 230, 118, 0.03));
+      border: 1px solid rgba(0, 230, 118, 0.3);
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .kpi-hero-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .kpi-hero-value {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: var(--primary);
+      margin: 4px 0;
+    }
+    .kpi-hero-sub {
+      font-size: 0.78rem;
+      color: #d1d5db;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .kpi-box {
+      background: var(--card-alt);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 8px;
+      text-align: center;
+    }
+    .kpi-box span {
+      display: block;
+      font-size: 0.68rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .kpi-box strong {
+      font-size: 0.92rem;
+      color: var(--text);
+    }
+
+    /* Daily Goal Bar */
+    .goal-box {
+      background: var(--card-alt);
+      border-radius: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+    }
+    .goal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.78rem;
+      margin-bottom: 6px;
+    }
+    .goal-edit-btn {
+      background: none;
+      border: none;
+      color: var(--primary);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0;
+      width: auto;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .progress-track {
+      width: 100%;
+      height: 8px;
+      background: #121418;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--primary);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    /* Form Controls */
+    label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.76rem;
+      color: var(--muted);
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: var(--card-alt);
+      color: var(--text);
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      transition: border-color 0.15s;
+    }
+    input:focus {
+      border-color: var(--primary);
+      outline: none;
+      background: #252a34;
+    }
+    input::placeholder {
+      color: #555d6b;
+      font-weight: 400;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+
+    /* Helper Links / Mini Buttons */
+    .chip-action {
+      background: var(--primary-soft);
+      color: var(--primary);
+      border: 1px solid rgba(0, 230, 118, 0.3);
+      border-radius: 6px;
+      padding: 3px 7px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-transform: none;
+    }
+    .sub-helper {
+      background: #14171c;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+      display: none;
+    }
+    .sub-helper.open {
+      display: block;
+    }
+
+    /* App Badges */
+    .app-tag {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 4px;
+    }
+    .tag-uber { background: #ffffff; }
+    .tag-99 { background: #ffca28; }
+    .tag-outros { background: #ff5252; }
+
+    /* Buttons */
+    button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .btn-salvar {
+      background: var(--primary);
+      color: #051b0e;
+      margin-top: 6px;
+      box-shadow: 0 4px 14px rgba(0, 230, 118, 0.25);
+    }
+    .btn-salvar:active {
+      background: var(--primary-dark);
+      transform: translateY(1px);
+    }
+    .btn-secondary {
+      background: var(--card-alt);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    /* Resultado Box */
+    .resultado {
+      display: none;
+      margin-top: 16px;
+      background: #13161b;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 230, 118, 0.4);
+    }
+    .res-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .badge-status {
+      padding: 4px 10px;
+      border-radius: 99px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .badge-good { background: rgba(0, 230, 118, 0.15); color: var(--primary); }
+    .badge-warn { background: rgba(255, 179, 0, 0.15); color: var(--warning); }
+    .badge-bad { background: rgba(255, 82, 82, 0.15); color: var(--danger); }
+
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      padding: 7px 0;
+      border-bottom: 1px solid #22262f;
+      font-size: 0.9rem;
+    }
+    .metric span:first-child { color: var(--muted); }
+    .metric span:last-child { font-weight: 600; }
+    .metric.highlight {
+      border-bottom: none;
+      font-weight: 800;
+      color: var(--primary);
+      font-size: 1.1rem;
+      padding-top: 10px;
+      margin-top: 4px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Histórico */
+    .historico-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 18px 0 10px;
+    }
+    .historico-header h2 {
+      font-size: 0.95rem;
+      color: var(--text);
+      margin: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .historico-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .historico-item {
+      background: var(--card);
+      border-left: 4px solid var(--primary);
+      padding: 12px 14px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      border-top: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .hist-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .hist-date {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+    .hist-profit {
+      font-weight: 800;
+      font-size: 0.95rem;
+      color: var(--primary);
+    }
+    .hist-details {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 12px;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .hist-btn-del {
+      background: transparent;
+      border: none;
+      color: #6b7280;
+      width: auto;
+      padding: 2px 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .hist-btn-del:hover { color: var(--danger); }
+
+    .limpar-btn {
+      background: transparent;
+      color: var(--danger);
+      font-size: 0.8rem;
+      padding: 10px;
+      border: 1px solid rgba(255, 82, 82, 0.4);
+      border-radius: 8px;
+      margin-top: 8px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #00e676;
+      color: #051b0e;
+      padding: 10px 18px;
+      border-radius: 99px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+      display: none;
+      z-index: 999;
+    }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h1>Fechamento de Turno</h1>
+  <!-- Top Bar -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-icon">MT</div>
+      <div>
+        <h1>Meu Turno</h1>
+        <span>Controle Diário • Uber / 99 / iFood</span>
+      </div>
+    </div>
+    <button id="btnInstall" class="btn-install" onclick="instalarPWA()">📲 Instalar App</button>
+  </header>
 
+  <!-- Painel Resumo & Meta Diária -->
   <div class="card">
+    <div class="period-tabs">
+      <button class="period-tab active" onclick="mudarFiltro('hoje', this)">Hoje</button>
+      <button class="period-tab" onclick="mudarFiltro('7dias', this)">7 Dias</button>
+      <button class="period-tab" onclick="mudarFiltro('mes', this)">Mês</button>
+      <button class="period-tab" onclick="mudarFiltro('tudo', this)">Geral</button>
+    </div>
+
+    <div class="kpi-hero">
+      <div class="kpi-hero-label" id="lblPeriodoLucro">Lucro Líquido (Hoje)</div>
+      <div class="kpi-hero-value" id="kpiLucroTotal">R$ 0,00</div>
+      <div class="kpi-hero-sub" id="kpiResumoSub">Faturamento Bruto: R$ 0,00 • Custos: R$ 0,00</div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-box">
+        <span>KM Rodado</span>
+        <strong id="kpiKmTotal">0 km</strong>
+      </div>
+      <div class="kpi-box">
+        <span>R$/KM Líquido</span>
+        <strong id="kpiMediaKm">R$ 0,00</strong>
+      </div>
+      <div class="kpi-box">
+        <span>Ganho/Hora Líq.</span>
+        <strong id="kpiMediaHora">R$ 0,00/h</strong>
+      </div>
+    </div>
+
+    <div class="goal-box">
+      <div class="goal-header">
+        <span id="txtMetaStatus">🎯 Meta Diária (Líquido): <strong>R$ 200,00</strong></span>
+        <button class="goal-edit-btn" onclick="editarMeta()">Alterar meta</button>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="barraMeta"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Formulário de Fechamento de Turno -->
+  <div class="card">
+    <h2 class="section-title">
+      <span>1. Odômetro e Tempo</span>
+      <button type="button" class="chip-action" onclick="usarUltimoKm()">🔄 Puxar último KM</button>
+    </h2>
+
+    <div class="grid">
+      <div>
+        <label>Data do Turno</label>
+        <input type="date" id="dataTurno">
+      </div>
+      <div>
+        <label>Horas na Pista</label>
+        <input type="number" id="horasTrabalhadas" step="0.5" inputmode="decimal" placeholder="Ex: 8.5">
+      </div>
+    </div>
+
     <div class="grid">
       <div>
         <label>KM Inicial</label>
-        <input type="number" id="kmInicial" inputmode="numeric" placeholder="Ex: 45200">
+        <input type="number" id="kmInicial" inputmode="numeric" placeholder="Ex: 45200" oninput="atualizarKmTotal()">
       </div>
       <div>
         <label>KM Final</label>
-        <input type="number" id="kmFinal" inputmode="numeric" placeholder="Ex: 45380">
+        <input type="number" id="kmFinal" inputmode="numeric" placeholder="Ex: 45380" oninput="atualizarKmTotal()">
       </div>
     </div>
 
     <div class="grid">
       <div>
-        <label>Total Faturado (R$)</label>
-        <input type="number" id="faturamento" step="0.01" inputmode="decimal" placeholder="0.00">
+        <label>KM Total do Dia</label>
+        <input type="number" id="kmTotalInput" inputmode="numeric" placeholder="Ou digite o KM direto">
       </div>
       <div>
-        <label>Qtd. Corridas</label>
-        <input type="number" id="corridas" inputmode="numeric" placeholder="Ex: 14">
+        <label>Qtd. Corridas / Entregas</label>
+        <input type="number" id="corridas" inputmode="numeric" placeholder="Ex: 18">
+      </div>
+    </div>
+
+    <!-- Faturamento por App -->
+    <h2 class="section-title" style="margin-top: 8px;">
+      <span>2. Ganhos do Dia (Bruto)</span>
+      <small>Soma automática</small>
+    </h2>
+
+    <div class="grid-3">
+      <div>
+        <label><span><i class="app-tag tag-uber"></i>Uber</span></label>
+        <input type="number" id="ganhoUber" step="0.01" inputmode="decimal" placeholder="0.00" oninput="somarGanhosApps()">
+      </div>
+      <div>
+        <label><span><i class="app-tag tag-99"></i>99</span></label>
+        <input type="number" id="ganho99" step="0.01" inputmode="decimal" placeholder="0.00" oninput="somarGanhosApps()">
+      </div>
+      <div>
+        <label><span><i class="app-tag tag-outros"></i>Outros/Pix</span></label>
+        <input type="number" id="ganhoOutros" step="0.01" inputmode="decimal" placeholder="0.00" oninput="somarGanhosApps()">
+      </div>
+    </div>
+
+    <div>
+      <label>Total Faturado Bruto (R$)</label>
+      <input type="number" id="faturamento" step="0.01" inputmode="decimal" placeholder="0.00 (ou digite apenas o total aqui)">
+    </div>
+
+    <!-- Gastos do Dia -->
+    <h2 class="section-title" style="margin-top: 8px;">
+      <span>3. Gastos do Dia</span>
+      <button type="button" class="chip-action" onclick="toggleCalcCombustivel()">⛽ Calc. por KM/L</button>
+    </h2>
+
+    <!-- Mini calculadora opcional de combustível por consumo -->
+    <div id="boxCalcCombustivel" class="sub-helper">
+      <div style="font-size: 0.78rem; color: var(--primary); font-weight: 700; margin-bottom: 8px;">
+        Calculadora de Combustível pelo Consumo do Carro
+      </div>
+      <div class="grid">
+        <div>
+          <label>Consumo (KM por Litro)</label>
+          <input type="number" id="consumoKmL" step="0.1" inputmode="decimal" placeholder="Ex: 10.5" oninput="calcularCombustivelAuto()">
+        </div>
+        <div>
+          <label>Preço do Litro / m³ (R$)</label>
+          <input type="number" id="precoLitro" step="0.01" inputmode="decimal" placeholder="Ex: 5.89" oninput="calcularCombustivelAuto()">
+        </div>
+      </div>
+      <div style="font-size: 0.75rem; color: var(--muted);">
+        Preenche automaticamente o gasto de combustível com base no KM rodado.
       </div>
     </div>
 
     <div class="grid">
       <div>
-        <label>Combustível (R$)</label>
+        <label>Combustível / GNV (R$)</label>
         <input type="number" id="combustivel" step="0.01" inputmode="decimal" placeholder="0.00">
       </div>
       <div>
-        <label>Outros Gastos (R$)</label>
+        <label>Alimentação / Água (R$)</label>
+        <input type="number" id="alimentacao" step="0.01" inputmode="decimal" placeholder="0.00">
+      </div>
+    </div>
+
+    <div class="grid">
+      <div>
+        <label>Aluguel / Diária Carro (R$)</label>
+        <input type="number" id="diariaCarro" step="0.01" inputmode="decimal" placeholder="0.00">
+      </div>
+      <div>
+        <label>Lavagem / Pedágio / Outros</label>
         <input type="number" id="outrosGastos" step="0.01" inputmode="decimal" placeholder="0.00">
       </div>
     </div>
 
-    <label>Manutenção estimada por KM (R$)</label>
-    <input type="number" id="custoKm" step="0.01" value="0.15">
+    <div>
+      <label>
+        <span>Reserva de Manutenção por KM (R$)</span>
+        <span style="font-size:0.7rem; color:#888; text-transform:none;">Pneus, óleo, freios</span>
+      </label>
+      <input type="number" id="custoKm" step="0.01" inputmode="decimal" value="0.15">
+    </div>
 
-    <button class="btn-salvar" onclick="fecharTurno()">Calcular e Salvar Turno</button>
+    <button class="btn-salvar" onclick="fecharTurno()">✅ Calcular e Salvar Turno</button>
 
+    <!-- Resultado Detalhado do Turno -->
     <div id="boxResultado" class="resultado"></div>
   </div>
 
-  <h2 style="font-size: 1rem; color: #aaa; margin: 16px 0 8px;">Histórico Recente</h2>
+  <!-- Histórico Recente -->
+  <div class="historico-header">
+    <h2>📋 Histórico de Turnos</h2>
+    <div class="historico-actions">
+      <button class="chip-action" onclick="exportarCSV()">📥 Baixar Planilha (CSV)</button>
+    </div>
+  </div>
+
   <div id="listaHistorico"></div>
-  <button class="limpar-btn" onclick="limparDados()">Limpar histórico local</button>
+  <button class="limpar-btn" onclick="limparDados()">🗑️ Apagar todo o histórico local</button>
 </div>
 
+<div id="toast" class="toast">Copiado com sucesso!</div>
+
 <script>
+  let filtroAtual = 'hoje';
+  let ultimoResumoTexto = '';
+  let deferredPrompt = null;
+
+  // Inicialização
+  window.addEventListener('DOMContentLoaded', () => {
+    const hojeISO = new Date().toISOString().split('T')[0];
+    document.getElementById('dataTurno').value = hojeISO;
+
+    const custoKmSalvo = localStorage.getItem('meu_turno_custo_km');
+    if (custoKmSalvo !== null) {
+      document.getElementById('custoKm').value = custoKmSalvo;
+    }
+
+    const consumoSalvo = localStorage.getItem('meu_turno_consumo_kml');
+    if (consumoSalvo) document.getElementById('consumoKmL').value = consumoSalvo;
+
+    const precoSalvo = localStorage.getItem('meu_turno_preco_litro');
+    if (precoSalvo) document.getElementById('precoLitro').value = precoSalvo;
+
+    carregarHistorico();
+    atualizarDashboard();
+  });
+
+  // Registro do Service Worker para funcionar Offline no celular
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
+  }
+
+  // Botão de instalar PWA no Android/Chrome
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById('btnInstall').style.display = 'inline-block';
+  });
+
+  async function instalarPWA() {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    document.getElementById('btnInstall').style.display = 'none';
+  }
+
+  function mostrarToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.display = 'block';
+    setTimeout(() => { t.style.display = 'none'; }, 2600);
+  }
+
+  // Soma automática dos ganhos por aplicativo
+  function somarGanhosApps() {
+    const u = parseFloat(document.getElementById('ganhoUber').value) || 0;
+    const n = parseFloat(document.getElementById('ganho99').value) || 0;
+    const o = parseFloat(document.getElementById('ganhoOutros').value) || 0;
+    const soma = u + n + o;
+    if (soma > 0) {
+      document.getElementById('faturamento').value = soma.toFixed(2);
+    }
+  }
+
+  // Atualiza KM Total ao digitar KM Inicial e Final
+  function atualizarKmTotal() {
+    const kmIni = parseFloat(document.getElementById('kmInicial').value) || 0;
+    const kmFim = parseFloat(document.getElementById('kmFinal').value) || 0;
+    if (kmFim > kmIni) {
+      document.getElementById('kmTotalInput').value = (kmFim - kmIni).toFixed(1).replace(/\.0$/, '');
+      calcularCombustivelAuto();
+    }
+  }
+
+  // Puxa o último KM Final registrado no histórico
+  function usarUltimoKm() {
+    const historico = obterHistorico();
+    const comKmFinal = historico.find(item => item.kmFinal && item.kmFinal > 0);
+    if (comKmFinal) {
+      document.getElementById('kmInicial').value = comKmFinal.kmFinal;
+      atualizarKmTotal();
+      mostrarToast(`KM Inicial preenchido: ${comKmFinal.kmFinal}`);
+    } else {
+      mostrarToast('Nenhum KM Final anterior encontrado.');
+    }
+  }
+
+  // Calculadora de combustível por KM/L
+  function toggleCalcCombustivel() {
+    const box = document.getElementById('boxCalcCombustivel');
+    box.classList.toggle('open');
+  }
+
+  function calcularCombustivelAuto() {
+    const kmTotal = obterKmTotalFormulario();
+    const kml = parseFloat(document.getElementById('consumoKmL').value) || 0;
+    const preco = parseFloat(document.getElementById('precoLitro').value) || 0;
+
+    if (kml > 0) localStorage.setItem('meu_turno_consumo_kml', kml);
+    if (preco > 0) localStorage.setItem('meu_turno_preco_litro', preco);
+
+    if (kmTotal > 0 && kml > 0 && preco > 0) {
+      const litros = kmTotal / kml;
+      const gastoComb = litros * preco;
+      document.getElementById('combustivel').value = gastoComb.toFixed(2);
+    }
+  }
+
+  function obterKmTotalFormulario() {
+    const kmIni = parseFloat(document.getElementById('kmInicial').value) || 0;
+    const kmFim = parseFloat(document.getElementById('kmFinal').value) || 0;
+    const kmDireto = parseFloat(document.getElementById('kmTotalInput').value) || 0;
+    if (kmFim > kmIni) return kmFim - kmIni;
+    return kmDireto > 0 ? kmDireto : 0;
+  }
+
+  function formatarDataBR(isoStr) {
+    if (!isoStr) return new Date().toLocaleDateString('pt-BR');
+    const partes = isoStr.split('-');
+    if (partes.length !== 3) return isoStr;
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+  }
+
   function fecharTurno() {
     const kmIni = parseFloat(document.getElementById('kmInicial').value) || 0;
     const kmFim = parseFloat(document.getElementById('kmFinal').value) || 0;
+    const kmTotal = obterKmTotalFormulario();
+
     const fat = parseFloat(document.getElementById('faturamento').value) || 0;
     const qtd = parseInt(document.getElementById('corridas').value) || 0;
+    const horas = parseFloat(document.getElementById('horasTrabalhadas').value) || 0;
+
     const comb = parseFloat(document.getElementById('combustivel').value) || 0;
+    const alim = parseFloat(document.getElementById('alimentacao').value) || 0;
+    const diaria = parseFloat(document.getElementById('diariaCarro').value) || 0;
     const outros = parseFloat(document.getElementById('outrosGastos').value) || 0;
     const manutKm = parseFloat(document.getElementById('custoKm').value) || 0;
 
-    const kmTotal = kmFim > kmIni ? kmFim - kmIni : 0;
+    if (fat <= 0 && kmTotal <= 0) {
+      mostrarToast('Preencha pelo menos o Faturamento ou KM rodado!');
+      return;
+    }
+
+    localStorage.setItem('meu_turno_custo_km', manutKm);
+
     const provisaoManut = kmTotal * manutKm;
-    const custosTotais = comb + outros + provisaoManut;
+    const gastosDiretos = comb + alim + diaria + outros;
+    const custosTotais = gastosDiretos + provisaoManut;
     const lucroLiquido = fat - custosTotais;
 
     const brutoKm = kmTotal > 0 ? (fat / kmTotal).toFixed(2) : "0.00";
     const liquidoKm = kmTotal > 0 ? (lucroLiquido / kmTotal).toFixed(2) : "0.00";
     const ticketMedio = qtd > 0 ? (fat / qtd).toFixed(2) : "0.00";
+    const brutoHora = horas > 0 ? (fat / horas).toFixed(2) : "0.00";
+    const liquidoHora = horas > 0 ? (lucroLiquido / horas).toFixed(2) : "0.00";
+    const margemLiquida = fat > 0 ? Math.round((lucroLiquido / fat) * 100) : 0;
+
+    const dataBR = formatarDataBR(document.getElementById('dataTurno').value);
+
+    // Avaliação de saúde do turno
+    let badgeClass = 'badge-good';
+    let badgeText = '🔥 Excelente Turno';
+    const numLiqKm = parseFloat(liquidoKm);
+    if (lucroLiquido <= 0 || (kmTotal > 0 && numLiqKm < 0.8)) {
+      badgeClass = 'badge-bad';
+      badgeText = '⚠️ Custo Alto / Margem Baixa';
+    } else if (kmTotal > 0 && numLiqKm < 1.3) {
+      badgeClass = 'badge-warn';
+      badgeText = '👍 Turno Regular';
+    }
 
     const box = document.getElementById('boxResultado');
     box.style.display = 'block';
     box.innerHTML = `
+      <div class="res-header">
+        <strong>Resumo de ${dataBR}</strong>
+        <span class="badge-status ${badgeClass}">${badgeText}</span>
+      </div>
       <div class="metric"><span>KM Total Rodado:</span><span>${kmTotal} km</span></div>
-      <div class="metric"><span>Custo Total Operacional:</span><span>R$ ${custosTotais.toFixed(2)}</span></div>
-      <div class="metric"><span>Bruto por KM:</span><span>R$ ${brutoKm}</span></div>
-      <div class="metric"><span>Líquido por KM:</span><span>R$ ${liquidoKm}</span></div>
-      <div class="metric"><span>Ticket Médio:</span><span>R$ ${ticketMedio}</span></div>
-      <div class="metric"><span>Lucro Líquido Final:</span><span>R$ ${lucroLiquido.toFixed(2)}</span></div>
+      <div class="metric"><span>Faturamento Bruto:</span><span>R$ ${fat.toFixed(2)}</span></div>
+      <div class="metric"><span>Gastos do Dia (Comb/Alim/Diária/Outros):</span><span style="color:#ff8a80;">- R$ ${gastosDiretos.toFixed(2)}</span></div>
+      <div class="metric"><span>Reserva Manutenção (${kmTotal}km × R$ ${manutKm.toFixed(2)}):</span><span style="color:#ffd54f;">- R$ ${provisaoManut.toFixed(2)}</span></div>
+      <div class="metric"><span>Custo Operacional Total:</span><span>R$ ${custosTotais.toFixed(2)}</span></div>
+      <div class="metric"><span>Ganho por KM (Bruto / Líquido):</span><span>R$ ${brutoKm} / <b>R$ ${liquidoKm}</b></span></div>
+      ${horas > 0 ? `<div class="metric"><span>Ganho por Hora (Bruto / Líquido):</span><span>R$ ${brutoHora}/h / <b>R$ ${liquidoHora}/h</b></span></div>` : ''}
+      <div class="metric"><span>Ticket Médio (${qtd} corridas):</span><span>R$ ${ticketMedio}</span></div>
+      <div class="metric highlight">
+        <span>Lucro Líquido Real (${margemLiquida}%):</span>
+        <span style="color:${lucroLiquido >= 0 ? '#00e676' : '#ff5252'}">R$ ${lucroLiquido.toFixed(2)}</span>
+      </div>
+      <button type="button" class="btn-secondary" style="margin-top:12px;" onclick="copiarResumoWhatsApp()">
+        📲 Copiar Fechamento p/ WhatsApp
+      </button>
     `;
 
+    ultimoResumoTexto =
+      `🚗 *FECHAMENTO MEU TURNO (${dataBR})*\n` +
+      `💰 *Faturamento Bruto:* R$ ${fat.toFixed(2)}\n` +
+      `⛽ *Custos Totais:* R$ ${custosTotais.toFixed(2)} (Comb: R$ ${comb.toFixed(2)} | Alim: R$ ${alim.toFixed(2)} | Diária: R$ ${diaria.toFixed(2)} | Outros: R$ ${outros.toFixed(2)} | Manut: R$ ${provisaoManut.toFixed(2)})\n` +
+      `✅ *LUCRO LÍQUIDO:* R$ ${lucroLiquido.toFixed(2)} (${margemLiquida}%)\n` +
+      `🛣️ *KM Rodado:* ${kmTotal} km (Líq: R$ ${liquidoKm}/km)\n` +
+      (horas > 0 ? `⏱️ *Horas:* ${horas}h (Líq: R$ ${liquidoHora}/h)\n` : '') +
+      `🏁 *Corridas:* ${qtd} (Ticket: R$ ${ticketMedio})`;
+
+    // Salva no localStorage na estrutura compatível com `turnos_app`
     const registro = {
-      data: new Date().toLocaleDateString('pt-BR'),
-      kmTotal,
+      id: Date.now(),
+      data: dataBR,
+      dataISO: document.getElementById('dataTurno').value,
+      kmInicial: kmIni,
+      kmFinal: kmFim,
+      kmTotal: Number(kmTotal),
+      horas: horas,
+      corridas: qtd,
+      faturamento: Number(fat.toFixed(2)),
+      custosTotais: Number(custosTotais.toFixed(2)),
+      combustivel: Number(comb.toFixed(2)),
+      alimentacao: Number(alim.toFixed(2)),
+      diariaCarro: Number(diaria.toFixed(2)),
+      outrosGastos: Number(outros.toFixed(2)),
+      provisaoManut: Number(provisaoManut.toFixed(2)),
       lucroLiquido: lucroLiquido.toFixed(2),
-      liquidoKm
+      brutoKm,
+      liquidoKm,
+      liquidoHora,
+      ticketMedio
     };
 
-    let historico = JSON.parse(localStorage.getItem('turnos_app') || '[]');
+    const historico = obterHistorico();
     historico.unshift(registro);
     localStorage.setItem('turnos_app', JSON.stringify(historico));
+
     carregarHistorico();
+    atualizarDashboard();
+    mostrarToast('Turno salvo com sucesso!');
   }
 
-  function carregarHistorico() {
-    const historico = JSON.parse(localStorage.getItem('turnos_app') || '[]');
-    const container = document.getElementById('listaHistorico');
-    container.innerHTML = historico.slice(0, 5).map(item => `
-      <div class="historico-item">
-        <strong>${item.data}</strong> — ${item.kmTotal} km rodados<br>
-        Lucro: <b>R$ ${item.lucroLiquido}</b> (R$ ${item.liquidoKm}/km)
-      </div>
-    `).join('') || '<div style="color:#666; font-size:0.85rem;">Nenhum turno registrado ainda.</div>';
+  function copiarResumoWhatsApp() {
+    if (!ultimoResumoTexto) return;
+    navigator.clipboard.writeText(ultimoResumoTexto).then(() => {
+      mostrarToast('Resumo copiado! Só colar no WhatsApp.');
+    });
   }
 
-  function limparDados() {
-    if (confirm('Tem certeza que deseja apagar o histórico salvo no celular?')) {
-      localStorage.removeItem('turnos_app');
-      carregarHistorico();
-      document.getElementById('boxResultado').style.display = 'none';
+  function obterHistorico() {
+    try {
+      return JSON.parse(localStorage.getItem('turnos_app') || '[]');
+    } catch (e) {
+      return [];
     }
   }
 
-  carregarHistorico();
+  // Filtro de período do Dashboard
+  function mudarFiltro(novoFiltro, btnEl) {
+    filtroAtual = novoFiltro;
+    document.querySelectorAll('.period-tab').forEach(b => b.classList.remove('active'));
+    if (btnEl) btnEl.classList.add('active');
+    atualizarDashboard();
+  }
+
+  function parseDataRegistro(item) {
+    if (item.dataISO) {
+      const [y, m, d] = item.dataISO.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
+    if (item.data && item.data.includes('/')) {
+      const [d, m, y] = item.data.split('/').map(Number);
+      return new Date(y, m - 1, d);
+    }
+    return new Date();
+  }
+
+  function atualizarDashboard() {
+    const historico = obterHistorico();
+    const agora = new Date();
+    const hojeStr = agora.toLocaleDateString('pt-BR');
+
+    const filtrados = historico.filter(item => {
+      if (filtroAtual === 'hoje') {
+        return item.data === hojeStr;
+      }
+      const dt = parseDataRegistro(item);
+      if (filtroAtual === '7dias') {
+        const diffDias = (agora - dt) / (1000 * 60 * 60 * 24);
+        return diffDias >= -1 && diffDias <= 7;
+      }
+      if (filtroAtual === 'mes') {
+        return dt.getMonth() === agora.getMonth() && dt.getFullYear() === agora.getFullYear();
+      }
+      return true;
+    });
+
+    const nomesFiltro = {
+      hoje: 'Lucro Líquido (Hoje)',
+      '7dias': 'Lucro Líquido (Últimos 7 Dias)',
+      mes: 'Lucro Líquido (Mês Atual)',
+      tudo: 'Lucro Líquido (Acumulado Geral)'
+    };
+    document.getElementById('lblPeriodoLucro').textContent = nomesFiltro[filtroAtual];
+
+    let somaLucro = 0;
+    let somaFat = 0;
+    let somaCustos = 0;
+    let somaKm = 0;
+    let somaHoras = 0;
+
+    filtrados.forEach(item => {
+      const luc = parseFloat(item.lucroLiquido) || 0;
+      const fat = parseFloat(item.faturamento) || 0;
+      const cus = item.custosTotais !== undefined ? parseFloat(item.custosTotais) : Math.max(0, fat - luc);
+      somaLucro += luc;
+      somaFat += fat;
+      somaCustos += cus;
+      somaKm += parseFloat(item.kmTotal) || 0;
+      somaHoras += parseFloat(item.horas) || 0;
+    });
+
+    const mediaKm = somaKm > 0 ? (somaLucro / somaKm) : 0;
+    const mediaHora = somaHoras > 0 ? (somaLucro / somaHoras) : 0;
+
+    const elLucro = document.getElementById('kpiLucroTotal');
+    elLucro.textContent = `R$ ${somaLucro.toFixed(2)}`;
+    elLucro.style.color = somaLucro >= 0 ? 'var(--primary)' : 'var(--danger)';
+
+    document.getElementById('kpiResumoSub').textContent =
+      `Bruto: R$ ${somaFat.toFixed(2)} • Gastos: R$ ${somaCustos.toFixed(2)} (${filtrados.length} turno${filtrados.length === 1 ? '' : 's'})`;
+    document.getElementById('kpiKmTotal').textContent = `${somaKm.toFixed(0)} km`;
+    document.getElementById('kpiMediaKm').textContent = `R$ ${mediaKm.toFixed(2)}`;
+    document.getElementById('kpiMediaHora').textContent = somaHoras > 0 ? `R$ ${mediaHora.toFixed(2)}/h` : '—';
+
+    // Atualiza barra da Meta Diária com base nos turnos de hoje
+    const metaDiaria = parseFloat(localStorage.getItem('meu_turno_meta_diaria') || '200');
+    const lucroHoje = historico
+      .filter(i => i.data === hojeStr)
+      .reduce((acc, cur) => acc + (parseFloat(cur.lucroLiquido) || 0), 0);
+
+    const pct = metaDiaria > 0 ? Math.min(100, Math.max(0, (lucroHoje / metaDiaria) * 100)) : 0;
+    document.getElementById('barraMeta').style.width = `${pct}%`;
+
+    const falta = Math.max(0, metaDiaria - lucroHoje);
+    if (lucroHoje >= metaDiaria && metaDiaria > 0) {
+      document.getElementById('txtMetaStatus').innerHTML =
+        `🏆 Meta de Hoje Batida! <strong>R$ ${lucroHoje.toFixed(2)} / R$ ${metaDiaria.toFixed(2)}</strong>`;
+    } else {
+      document.getElementById('txtMetaStatus').innerHTML =
+        `🎯 Meta Hoje: <strong>R$ ${metaDiaria.toFixed(2)}</strong> (Falta R$ ${falta.toFixed(2)})`;
+    }
+  }
+
+  function editarMeta() {
+    const atual = localStorage.getItem('meu_turno_meta_diaria') || '200';
+    const nova = prompt('Qual a sua meta de LUCRO LÍQUIDO por dia (R$)?', atual);
+    if (nova !== null) {
+      const val = parseFloat(nova.replace(',', '.'));
+      if (!isNaN(val) && val > 0) {
+        localStorage.setItem('meu_turno_meta_diaria', val.toFixed(2));
+        atualizarDashboard();
+        mostrarToast('Meta diária atualizada!');
+      }
+    }
+  }
+
+  function carregarHistorico() {
+    const historico = obterHistorico();
+    const container = document.getElementById('listaHistorico');
+
+    if (historico.length === 0) {
+      container.innerHTML = '<div style="color:#6b7280; font-size:0.85rem; text-align:center; padding: 18px 0;">Nenhum turno registrado ainda. Faça seu primeiro fechamento acima!</div>';
+      return;
+    }
+
+    container.innerHTML = historico.slice(0, 15).map((item, idx) => {
+      const fat = item.faturamento !== undefined ? `Bruto: R$ ${Number(item.faturamento).toFixed(2)}` : '';
+      const custos = item.custosTotais !== undefined ? `Gastos: R$ ${Number(item.custosTotais).toFixed(2)}` : '';
+      const hrs = item.horas ? `⏱️ ${item.horas}h (R$ ${item.liquidoHora}/h)` : '';
+      const tkt = item.ticketMedio && item.ticketMedio !== '0.00' ? `🎫 Ticket: R$ ${item.ticketMedio}` : '';
+
+      return `
+        <div class="historico-item">
+          <div class="hist-top">
+            <span class="hist-date">📅 ${item.data} • ${item.kmTotal} km</span>
+            <div>
+              <span class="hist-profit">Líq: R$ ${item.lucroLiquido}</span>
+              <button class="hist-btn-del" title="Excluir turno" onclick="excluirTurno(${idx})">✕</button>
+            </div>
+          </div>
+          <div class="hist-details">
+            ${fat ? `<span>💵 ${fat}</span>` : ''}
+            ${custos ? `<span>⛽ ${custos}</span>` : ''}
+            <span>🛣️ R$ ${item.liquidoKm}/km</span>
+            ${hrs ? `<span>${hrs}</span>` : ''}
+            ${tkt ? `<span>${tkt}</span>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function excluirTurno(index) {
+    if (!confirm('Deseja remover este turno do histórico?')) return;
+    const historico = obterHistorico();
+    historico.splice(index, 1);
+    localStorage.setItem('turnos_app', JSON.stringify(historico));
+    carregarHistorico();
+    atualizarDashboard();
+    mostrarToast('Turno removido.');
+  }
+
+  function exportarCSV() {
+    const historico = obterHistorico();
+    if (historico.length === 0) {
+      mostrarToast('Não há dados no histórico para exportar.');
+      return;
+    }
+
+    const cabecalho = [
+      'Data', 'KM_Total', 'Horas', 'Corridas', 'Faturamento_Bruto',
+      'Combustivel', 'Alimentacao', 'Diaria_Carro', 'Outros_Gastos',
+      'Reserva_Manutencao', 'Custo_Total', 'Lucro_Liquido', 'Liquido_por_KM', 'Ticket_Medio'
+    ];
+
+    const linhas = historico.map(i => [
+      i.data || '',
+      i.kmTotal || 0,
+      i.horas || 0,
+      i.corridas || 0,
+      i.faturamento || 0,
+      i.combustivel || 0,
+      i.alimentacao || 0,
+      i.diariaCarro || 0,
+      i.outrosGastos || 0,
+      i.provisaoManut || 0,
+      i.custosTotais || 0,
+      i.lucroLiquido || 0,
+      i.liquidoKm || 0,
+      i.ticketMedio || 0
+    ].join(';'));
+
+    const csvContent = '\uFEFF' + cabecalho.join(';') + '\n' + linhas.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `meu-turno-relatorio-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    mostrarToast('Planilha CSV baixada!');
+  }
+
+  function limparDados() {
+    if (confirm('Tem certeza que deseja apagar TODO o histórico salvo no celular?')) {
+      localStorage.removeItem('turnos_app');
+      carregarHistorico();
+      atualizarDashboard();
+      document.getElementById('boxResultado').style.display = 'none';
+      mostrarToast('Histórico limpo.');
+    }
+  }
 </script>
 </body>
 </html>
