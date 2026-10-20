@@ -563,6 +563,14 @@
       border-radius: var(--radius-md);
       padding: 14px;
       margin-bottom: 10px;
+      cursor: pointer;
+      transition: border-color 0.18s ease, background 0.18s ease;
+    }
+    .activity-item:active {
+      background: #191919;
+    }
+    .activity-item.open {
+      border-color: #3d3d3d;
     }
     .act-header {
       display: flex;
@@ -582,9 +590,104 @@
     .act-meta {
       display: flex;
       flex-wrap: wrap;
+      align-items: center;
       gap: 6px 12px;
       font-size: 0.78rem;
       color: var(--uber-muted);
+    }
+    .act-toggle-hint {
+      margin-left: auto;
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--uber-white);
+      background: var(--uber-surface-elevated);
+      border: 1px solid var(--uber-border);
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+    }
+    .act-details-panel {
+      display: none;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--uber-border);
+      font-size: 0.8rem;
+    }
+    .activity-item.open .act-details-panel {
+      display: block;
+    }
+    .act-detail-section-title {
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--uber-muted);
+      margin: 8px 0 6px;
+    }
+    .act-detail-section-title:first-child {
+      margin-top: 0;
+    }
+    .act-detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 12px;
+      background: var(--uber-black);
+      border: 1px solid var(--uber-border);
+      border-radius: var(--radius-sm);
+      padding: 10px;
+    }
+    .act-detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .act-detail-row:last-child {
+      border-bottom: none;
+    }
+    .act-detail-row span:first-child {
+      color: var(--uber-muted);
+    }
+    .act-detail-row span:last-child {
+      font-weight: 700;
+      color: var(--uber-white);
+    }
+
+    /* Insight do Melhor e Pior Dia da Semana */
+    .weekday-insight {
+      display: none;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--uber-border);
+    }
+    .weekday-insight-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .weekday-box {
+      background: var(--uber-surface-elevated);
+      border: 1px solid var(--uber-border);
+      border-radius: var(--radius-md);
+      padding: 10px;
+    }
+    .weekday-box-tag {
+      font-size: 0.66rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 4px;
+      display: block;
+    }
+    .weekday-box-day {
+      font-size: 0.96rem;
+      font-weight: 900;
+      color: var(--uber-white);
+    }
+    .weekday-box-meta {
+      font-size: 0.73rem;
+      color: var(--uber-muted);
+      margin-top: 2px;
     }
 
     /* ==========================================================================
@@ -867,6 +970,9 @@
 
       <!-- Gráfico de Barras dos Últimos 7 Dias (Padrão Uber Driver) -->
       <div id="grafico7Dias" class="uber-chart"></div>
+
+      <!-- Inteligência Semanal: Melhor Dia p/ Rodar vs. Melhor Dia p/ Folgar -->
+      <div id="insightDiaSemana" class="weekday-insight"></div>
     </div>
 
     <!-- Card de Meta Diária Inteligente -->
@@ -2230,7 +2336,102 @@
 
       this.renderizarPrevisaoMeta(turnos, falta, lucroHoje >= meta);
       this.renderizarGrafico7Dias(turnos, meta);
+      this.renderizarInsightDiaSemana(turnos);
       this.renderizarFerramentasPista(turnos);
+    },
+
+    renderizarInsightDiaSemana(turnos) {
+      const container = document.getElementById('insightDiaSemana');
+      if (!container) return;
+
+      if (!turnos || turnos.length === 0) {
+        container.style.display = 'none';
+        return;
+      }
+
+      const nomesCompletos = [
+        'Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira',
+        'Quinta-feira', 'Sexta-feira', 'Sábado'
+      ];
+
+      const estatisticas = Array.from({ length: 7 }, (_, idx) => ({
+        idx,
+        nome: nomesCompletos[idx],
+        somaLucro: 0,
+        somaHoras: 0,
+        somaKm: 0,
+        diasUnicos: new Set()
+      }));
+
+      turnos.forEach(t => {
+        const dt = this.parseData(t);
+        const diaSemana = dt.getDay();
+        const chaveData = t.dataISO || t.data || `${dt.getFullYear()}-${dt.getMonth()}-${dt.getDate()}`;
+        const reg = estatisticas[diaSemana];
+        reg.somaLucro += parseFloat(t.lucroLiquido) || 0;
+        reg.somaHoras += parseFloat(t.horas) || 0;
+        reg.somaKm += parseFloat(t.kmTotal) || 0;
+        reg.diasUnicos.add(chaveData);
+      });
+
+      const ativos = estatisticas
+        .filter(d => d.diasUnicos.size > 0)
+        .map(d => {
+          const qtdDias = d.diasUnicos.size;
+          const mediaDia = d.somaLucro / qtdDias;
+          const mediaHora = d.somaHoras > 0 ? (d.somaLucro / d.somaHoras) : 0;
+          const mediaKm = d.somaKm > 0 ? (d.somaLucro / d.somaKm) : 0;
+          return { ...d, qtdDias, mediaDia, mediaHora, mediaKm };
+        });
+
+      if (ativos.length === 0) {
+        container.style.display = 'none';
+        return;
+      }
+
+      // Se todos os dias ativos tiverem horas registradas, ordena por R$/hora líquido; caso contrário, por lucro líquido médio do dia
+      const todosComHoras = ativos.every(d => d.mediaHora > 0);
+      const criterio = d => (todosComHoras ? d.mediaHora : d.mediaDia);
+
+      const ordenados = [...ativos].sort((a, b) => criterio(b) - criterio(a));
+      const melhor = ordenados[0];
+      const pior = ordenados[ordenados.length - 1];
+
+      const formatarResumoDia = d => {
+        const partes = [`Média: <b>R$ ${d.mediaDia.toFixed(0)}/dia</b>`];
+        if (d.mediaHora > 0) partes.push(`<b>R$ ${d.mediaHora.toFixed(0)}/h</b>`);
+        return partes.join(' • ');
+      };
+
+      container.style.display = 'block';
+
+      if (ativos.length === 1) {
+        container.innerHTML = `
+          <div class="weekday-box" style="border-color:rgba(6,193,103,0.35);">
+            <span class="weekday-box-tag" style="color:var(--uber-green);">🔥 Inteligência da Semana</span>
+            <div class="weekday-box-day">${melhor.nome}</div>
+            <div class="weekday-box-meta">
+              ${formatarResumoDia(melhor)} • Salve turnos em outros dias da semana para descobrir o melhor dia p/ folga.
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="weekday-insight-grid">
+          <div class="weekday-box" style="border-color:rgba(6,193,103,0.4);">
+            <span class="weekday-box-tag" style="color:var(--uber-green);">🔥 Melhor p/ Rodar</span>
+            <div class="weekday-box-day">${melhor.nome}</div>
+            <div class="weekday-box-meta">${formatarResumoDia(melhor)}</div>
+          </div>
+          <div class="weekday-box">
+            <span class="weekday-box-tag" style="color:var(--uber-yellow);">🛠️ Ideal p/ Folga</span>
+            <div class="weekday-box-day">${pior.nome}</div>
+            <div class="weekday-box-meta">${formatarResumoDia(pior)}</div>
+          </div>
+        </div>
+      `;
     },
 
     renderizarPrevisaoMeta(turnos, falta, bateuMeta) {
@@ -2487,6 +2688,16 @@
     },
 
     /* --- Histórico e Exportação --- */
+    toggleDetalhesTurno(id) {
+      const card = document.getElementById(`card-turno-${id}`);
+      const hint = document.getElementById(`hint-turno-${id}`);
+      if (!card) return;
+      const abriu = card.classList.toggle('open');
+      if (hint) {
+        hint.textContent = abriu ? '▴ Ocultar' : '▾ Raio-X';
+      }
+    },
+
     renderizarHistorico() {
       const turnos = StorageService.obterTurnos();
       const container = document.getElementById('listaHistorico');
@@ -2500,16 +2711,36 @@
         return;
       }
 
-      container.innerHTML = turnos.map((item, idx) => {
-        const fat = item.faturamento !== undefined ? `Bruto: R$ ${Number(item.faturamento).toFixed(2)}` : '';
-        const cus = item.custosTotais !== undefined ? `Custos: R$ ${Number(item.custosTotais).toFixed(2)}` : '';
+      const diasCurto = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+      container.innerHTML = turnos.map((item) => {
+        const dt = this.parseData(item);
+        const diaSem = diasCurto[dt.getDay()];
+        const fatNum = Number(item.faturamento || 0);
+        const cusNum = Number(item.custosTotais || 0);
+        const combNum = Number(item.combustivel || 0);
+        const alimNum = Number(item.alimentacao || 0);
+        const diarNum = Number(item.diariaCarro || 0);
+        const outrNum = Number(item.outrosGastos || 0);
+        const manutNum = Number(item.provisaoManut || 0);
+
+        const fat = item.faturamento !== undefined ? `Bruto: R$ ${fatNum.toFixed(2)}` : '';
+        const cus = item.custosTotais !== undefined ? `Custos: R$ ${cusNum.toFixed(2)}` : '';
         const hrs = item.horas ? `${item.horas}h (R$ ${item.liquidoHora}/h)` : '';
 
+        const textoOdometro = (item.kmInicial > 0 && item.kmFinal > 0)
+          ? `${item.kmInicial} → ${item.kmFinal} km (${item.kmTotal} km)`
+          : `${item.kmTotal} km rodados`;
+
+        const textoCorridas = item.corridas > 0
+          ? `${item.corridas} (${item.ticketMedio ? `R$ ${item.ticketMedio}/corr.` : ''})`
+          : 'Não informado';
+
         return `
-          <div class="activity-item">
+          <div id="card-turno-${item.id}" class="activity-item" onclick="UIController.toggleDetalhesTurno('${item.id}')">
             <div class="act-header">
-              <span class="act-title">${item.data} • ${item.kmTotal} km</span>
-              <div style="display:flex; align-items:center; gap:6px;">
+              <span class="act-title">${item.data} (${diaSem}) • ${item.kmTotal} km</span>
+              <div style="display:flex; align-items:center; gap:6px;" onclick="event.stopPropagation()">
                 <span class="act-net">R$ ${item.lucroLiquido}</span>
                 <button class="chip-btn" style="padding:3px 7px;" onclick="UIController.compartilharTurnoId('${item.id}')" title="Copiar p/ WhatsApp">📲</button>
                 <button class="chip-btn" style="padding:3px 7px;" onclick="UIController.editarTurno('${item.id}')" title="Editar turno">✎</button>
@@ -2521,6 +2752,54 @@
               ${cus ? `<span>• ${cus}</span>` : ''}
               <span>• R$ ${item.liquidoKm}/km</span>
               ${hrs ? `<span>• ${hrs}</span>` : ''}
+              <span id="hint-turno-${item.id}" class="act-toggle-hint">▾ Raio-X</span>
+            </div>
+
+            <!-- Raio-X Expansível do Turno -->
+            <div class="act-details-panel" onclick="event.stopPropagation()">
+              <div class="act-detail-section-title">🛣️ Operação e Eficiência</div>
+              <div style="background:var(--uber-black); border:1px solid var(--uber-border); border-radius:var(--radius-sm); padding:8px 10px;">
+                <div class="act-detail-row">
+                  <span>Odômetro</span>
+                  <span>${textoOdometro}</span>
+                </div>
+                <div class="act-detail-row">
+                  <span>Horas líquidas na pista</span>
+                  <span>${item.horas > 0 ? `${item.horas}h (R$ ${item.liquidoHora}/h)` : 'Não informado'}</span>
+                </div>
+                <div class="act-detail-row">
+                  <span>Viagens / Ticket médio</span>
+                  <span>${textoCorridas}</span>
+                </div>
+                <div class="act-detail-row">
+                  <span>Ganho Bruto vs. Líquido / KM</span>
+                  <span>R$ ${item.brutoKm || '0.00'}/km → <b style="color:var(--uber-green)">R$ ${item.liquidoKm}/km</b></span>
+                </div>
+              </div>
+
+              <div class="act-detail-section-title">💸 Raio-X dos Custos (Total: R$ ${cusNum.toFixed(2)})</div>
+              <div style="background:var(--uber-black); border:1px solid var(--uber-border); border-radius:var(--radius-sm); padding:8px 10px;">
+                <div class="act-detail-row">
+                  <span>⛽ Combustível</span>
+                  <span>R$ ${combNum.toFixed(2)}</span>
+                </div>
+                <div class="act-detail-row">
+                  <span>🛠️ Reserva de Manutenção (KM)</span>
+                  <span>R$ ${manutNum.toFixed(2)}</span>
+                </div>
+                <div class="act-detail-row">
+                  <span>🍽️ Alimentação / Água</span>
+                  <span>R$ ${alimNum.toFixed(2)}</span>
+                </div>
+                <div class="act-detail-row">
+                  <span>🚗 Diária / Aluguel / Fixo</span>
+                  <span>R$ ${diarNum.toFixed(2)}</span>
+                </div>
+                <div class="act-detail-row">
+                  <span>📦 Outros (Pedágio, Lavagem...)</span>
+                  <span>R$ ${outrNum.toFixed(2)}</span>
+                </div>
+              </div>
             </div>
           </div>
         `;
