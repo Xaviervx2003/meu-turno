@@ -366,11 +366,21 @@ body {
   border-bottom: 1px solid var(--uber-border);
   margin-bottom: 16px;
 }
+.hero-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
 .hero-label {
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   color: var(--uber-muted);
-  font-weight: 700;
-  letter-spacing: 0.3px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .hero-amount {
   font-size: 2.3rem;
@@ -399,29 +409,43 @@ body {
   border: 1px solid var(--uber-border);
 }
 
-/* Grid de 3 KPIs limpos */
+/* Grids de KPIs Padronizados (2 ou 3 colunas em todo o app) */
 .kpi-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: 8px;
+}
+.kpi-row-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
 }
 .kpi-tile {
   background: var(--uber-surface-elevated);
+  border: 1px solid var(--uber-border);
   border-radius: var(--radius-md);
-  padding: 12px 10px;
+  padding: 10px 10px;
+  min-width: 0;
 }
 .kpi-tile span {
   display: block;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--uber-muted);
   font-weight: 700;
   text-transform: uppercase;
   margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .kpi-tile strong {
-  font-size: 0.98rem;
+  display: block;
+  font-size: 0.94rem;
   font-weight: 800;
   color: var(--uber-white);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ==========================================================================
@@ -878,11 +902,14 @@ label {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: var(--uber-muted);
   margin-bottom: 6px;
   text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .label-hint {
   text-transform: none;
@@ -927,6 +954,13 @@ input::placeholder {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 8px;
+}
+.grid-3 label {
+  font-size: 0.68rem;
+}
+.grid-3 input {
+  padding: 10px 8px;
+  font-size: 0.95rem;
 }
 
 .collapsible-panel {
@@ -1006,10 +1040,13 @@ input::placeholder {
   gap: 4px;
   white-space: nowrap;
   flex-shrink: 0;
+  background: var(--uber-surface-elevated);
+  color: var(--uber-muted);
+  border: 1px solid var(--uber-border);
 }
-.status-good { background: var(--uber-green-soft); color: var(--uber-green); }
-.status-warn { background: var(--uber-yellow-soft); color: var(--uber-yellow); }
-.status-bad  { background: var(--uber-red-soft); color: var(--uber-red); }
+.status-good { background: var(--uber-green-soft); color: var(--uber-green); border-color: transparent; }
+.status-warn { background: var(--uber-yellow-soft); color: var(--uber-yellow); border-color: transparent; }
+.status-bad  { background: var(--uber-red-soft); color: var(--uber-red); border-color: transparent; }
 
 /* Cabeçalho Divisor de Semana do Ano no Histórico (Layout em 2 Linhas Limpas) */
 .week-group-header {
@@ -1019,7 +1056,7 @@ input::placeholder {
   background: var(--uber-black);
   border: 1px solid var(--uber-border);
   border-left: 3px solid var(--uber-blue);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   padding: 10px 12px;
   margin: 14px 0 8px;
 }
@@ -1039,29 +1076,35 @@ input::placeholder {
   color: var(--uber-white);
   letter-spacing: 0.2px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .week-group-sub {
   font-size: 0.74rem;
   color: var(--uber-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .week-group-net {
   font-size: 0.94rem;
   font-weight: 900;
   color: var(--uber-green);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .activity-item {
-  background: var(--uber-surface);
+  background: var(--uber-black);
   border: 1px solid var(--uber-border);
   border-radius: var(--radius-md);
-  padding: 14px;
+  padding: 12px;
   margin-bottom: 10px;
   cursor: pointer;
   transition: border-color 0.18s ease, background 0.18s ease;
 }
 .activity-item:active {
-  background: #191919;
+  background: #101010;
 }
 .activity-item.open {
   border-color: #454545;
@@ -1071,11 +1114,27 @@ input::placeholder {
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+}
+.act-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
 .act-title {
   font-weight: 800;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+.act-km-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--uber-muted);
+  background: var(--uber-surface-elevated);
+  border: 1px solid var(--uber-border);
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
   white-space: nowrap;
 }
 .act-header-right {
@@ -1090,20 +1149,6 @@ input::placeholder {
   color: var(--uber-green);
   white-space: nowrap;
 }
-.act-meta-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px 10px;
-  font-size: 0.76rem;
-  color: var(--uber-muted);
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: var(--radius-sm);
-  padding: 6px 8px;
-}
-.act-meta-grid b {
-  color: var(--uber-white);
-  font-weight: 700;
-}
 .act-toggle-hint {
   font-size: 0.7rem;
   font-weight: 800;
@@ -1112,6 +1157,7 @@ input::placeholder {
   border: 1px solid var(--uber-border);
   padding: 3px 9px;
   border-radius: var(--radius-pill);
+  white-space: nowrap;
 }
 
 .act-details-panel {

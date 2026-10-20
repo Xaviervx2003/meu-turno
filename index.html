@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
-  <link rel="stylesheet" href="./css/styles.css">
+  <link rel="stylesheet" href="./css/styles.css?v=13">
   <title>Meu Turno — Driver</title>
 </head>
 <body>
@@ -54,12 +54,14 @@
       <div id="barraNavegacaoPeriodo" class="period-navigator"></div>
 
       <div class="hero-earnings">
-        <div class="hero-label" id="lblPeriodoTitulo">LUCRO LÍQUIDO LIVRE (HOJE)</div>
+        <div class="hero-top-row">
+          <div class="hero-label" id="lblPeriodoTitulo">LUCRO LÍQUIDO (HOJE)</div>
+          <span id="kpiTurnosCount" class="status-badge">0 turnos</span>
+        </div>
         <div class="hero-amount" id="kpiLucroLiquido">R$ 0,00</div>
         <div class="hero-breakdown dot-list">
           <span>Bruto: <b id="kpiBruto">R$ 0,00</b></span>
           <span>Custos: <b id="kpiCustos">R$ 0,00</b></span>
-          <span id="kpiTurnosCount">0 turnos</span>
         </div>
 
         <!-- Comparativo Automático com a Semana / Mês Anterior -->
@@ -192,7 +194,7 @@
           <input type="date" id="dataTurno">
         </div>
         <div>
-          <label>Horas Trabalhadas</label>
+          <label>Horas na Pista</label>
           <input type="number" id="horasTrabalhadas" step="0.5" inputmode="decimal" placeholder="Ex: 8.5">
         </div>
       </div>
@@ -210,11 +212,11 @@
 
       <div class="grid-2">
         <div>
-          <label>KM Total Rodado</label>
+          <label>KM Rodado</label>
           <input type="number" id="kmTotalInput" inputmode="numeric" placeholder="Ou digite direto" oninput="UIController.calcularCombustivelPorConsumo()">
         </div>
         <div>
-          <label>Corridas / Entregas</label>
+          <label>Nº de Corridas</label>
           <input type="number" id="corridas" inputmode="numeric" placeholder="Ex: 18">
         </div>
       </div>
@@ -264,7 +266,7 @@
             <input type="number" id="consumoKmL" step="0.1" inputmode="decimal" placeholder="Ex: 10.5" oninput="UIController.calcularCombustivelPorConsumo()">
           </div>
           <div>
-            <label>Preço do Litro (R$)</label>
+            <label>Preço Litro (R$)</label>
             <input type="number" id="precoLitro" step="0.01" inputmode="decimal" placeholder="Ex: 5.89" oninput="UIController.calcularCombustivelPorConsumo()">
           </div>
         </div>
@@ -272,29 +274,29 @@
 
       <div class="grid-2">
         <div>
-          <label>Combustível / GNV (R$)</label>
+          <label>Combustível (R$)</label>
           <input type="number" id="combustivel" step="0.01" inputmode="decimal" placeholder="0,00">
         </div>
         <div>
-          <label>Alimentação / Água (R$)</label>
+          <label>Alimentação (R$)</label>
           <input type="number" id="alimentacao" step="0.01" inputmode="decimal" placeholder="0,00">
         </div>
       </div>
 
       <div class="grid-2">
         <div>
-          <label>Diária / Aluguel Carro (R$)</label>
+          <label>Aluguel / Diária (R$)</label>
           <input type="number" id="diariaCarro" step="0.01" inputmode="decimal" placeholder="0,00">
         </div>
         <div>
-          <label>Pedágio / Lavagem / Outros</label>
+          <label>Outros Gastos (R$)</label>
           <input type="number" id="outrosGastos" step="0.01" inputmode="decimal" placeholder="0,00">
         </div>
       </div>
 
       <div>
         <label>
-          <span>Reserva Manutenção por KM (R$)</span>
+          <span>Reserva Manutenção / KM</span>
           <span class="label-hint">Pneus, óleo, freios</span>
         </label>
         <input type="number" id="custoKm" step="0.01" inputmode="decimal" value="0.15">
@@ -319,7 +321,7 @@
         <h2 class="card-title">🛡️ Backup e Segurança</h2>
         <span id="badgeCofreStatus" class="status-badge status-good">✓ Cofre Ativo</span>
       </div>
-      <div id="infoSegurancaDados" class="security-info-box"></div>
+      <div id="infoSegurancaDados" class="kpi-row-2"></div>
 
       <div class="grid-2 mt-12">
         <button type="button" class="btn-uber-primary" onclick="UIController.exportarBackupJSON()">
@@ -347,8 +349,8 @@
 
     <div class="uber-card">
       <div class="card-header-row compact">
-        <h2 class="card-title">Histórico de Atividades</h2>
-        <span id="lblTotalHistorico" class="text-muted-sm"></span>
+        <h2 class="card-title">📋 Histórico de Atividades</h2>
+        <span id="lblTotalHistorico" class="status-badge"></span>
       </div>
 
       <!-- Filtro Rápido por Semana do Ano / Mês -->
@@ -404,10 +406,10 @@
 <div id="toast" class="uber-toast"></div>
 
 <!-- MÓDULOS JAVASCRIPT DO APP -->
-<script src="./js/storage.js"></script>
-<script src="./js/calendar.js"></script>
-<script src="./js/finance.js"></script>
-<script src="./js/sheet.js"></script>
-<script src="./js/ui.js"></script>
+<script src="./js/storage.js?v=13"></script>
+<script src="./js/calendar.js?v=13"></script>
+<script src="./js/finance.js?v=13"></script>
+<script src="./js/sheet.js?v=13"></script>
+<script src="./js/ui.js?v=13"></script>
 </body>
 </html>

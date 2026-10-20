@@ -134,12 +134,8 @@ const UIController = {
     txt.textContent = emPausa ? 'Em Pausa' : 'Em Turno';
 
     const badgeHTML = emPausa
-      ? `<span class="status-badge status-warn">☕ PAUSA ALMOÇO (${this.formatarDuracaoMs(pausaAtualMs)})</span>`
-      : `<span class="status-badge status-good">🟢 EM TURNO DESDE ${ativo.horaFormatada}</span>`;
-
-    const infoPausaHTML = pausaTotalMs > 0
-      ? ` • Pausa: <b class="text-yellow">${this.formatarDuracaoMs(pausaTotalMs)}</b>`
-      : '';
+      ? `<span class="status-badge status-warn">☕ PAUSA (${this.formatarDuracaoMs(pausaAtualMs)})</span>`
+      : `<span class="status-badge status-good">🟢 DESDE ${ativo.horaFormatada}</span>`;
 
     const botaoPausaHTML = emPausa
       ? `<button type="button" class="btn-uber-green mb-12" onclick="UIController.alternarPausaTurno()">
@@ -152,11 +148,21 @@ const UIController = {
     card.innerHTML = `
       <div class="card-header-row compact">
         ${badgeHTML}
-        <strong class="text-muted-sm text-white">Rodando: ${this.formatarDuracaoMs(tempoLiquidoMs)}</strong>
+        <span class="status-badge">⏱️ Rodando: ${this.formatarDuracaoMs(tempoLiquidoMs)}</span>
       </div>
-      <div class="live-shift-summary">
-        KM Inicial: <b class="text-white">${ativo.kmInicial || '—'}</b> •
-        Gastos hoje: <b class="text-white">${FinanceEngine.moeda(totalGastosParciais)}</b>${infoPausaHTML}
+      <div class="kpi-row mb-12">
+        <div class="kpi-tile">
+          <span>KM Inicial</span>
+          <strong>${ativo.kmInicial || '—'}</strong>
+        </div>
+        <div class="kpi-tile">
+          <span>Gastos Rua</span>
+          <strong>${FinanceEngine.moeda(totalGastosParciais)}</strong>
+        </div>
+        <div class="kpi-tile">
+          <span>Pausa</span>
+          <strong class="${pausaTotalMs > 0 ? 'text-yellow' : ''}">${pausaTotalMs > 0 ? this.formatarDuracaoMs(pausaTotalMs) : '0m'}</strong>
+        </div>
       </div>
 
       ${botaoPausaHTML}
@@ -582,22 +588,22 @@ const UIController = {
 
     if (this.periodoAtual === 'hoje') {
       filtrados = turnos.filter(t => t.data === hojeStr);
-      document.getElementById('lblPeriodoTitulo').textContent = 'LUCRO LÍQUIDO LIVRE (HOJE)';
+      document.getElementById('lblPeriodoTitulo').textContent = 'LUCRO LÍQUIDO (HOJE)';
     } else if (this.periodoAtual === '7dias') {
       filtrados = turnos.filter(t => CalendarEngine.pertenceASemana(this.parseData(t), infoSemanaSelecionada));
       filtradosAnteriores = turnos.filter(t => CalendarEngine.pertenceASemana(this.parseData(t), infoSemanaSelecionada.anterior));
       rotuloAnterior = `Semana ${infoSemanaSelecionada.anterior.numStr}`;
       document.getElementById('lblPeriodoTitulo').textContent =
-        `LUCRO LÍQUIDO • SEMANA ${infoSemanaSelecionada.numStr}/${infoSemanaSelecionada.totalAno} (${infoSemanaSelecionada.intervaloCurto.toUpperCase()})`;
+        `LUCRO • SEMANA ${infoSemanaSelecionada.numStr}/${infoSemanaSelecionada.totalAno}`;
     } else if (this.periodoAtual === 'mes') {
       filtrados = turnos.filter(t => CalendarEngine.pertenceAoMes(this.parseData(t), infoMesSelecionado));
       filtradosAnteriores = turnos.filter(t => CalendarEngine.pertenceAoMes(this.parseData(t), infoMesSelecionado.anterior));
       rotuloAnterior = infoMesSelecionado.anterior.rotuloCurto;
       document.getElementById('lblPeriodoTitulo').textContent =
-        `LUCRO LÍQUIDO • ${infoMesSelecionado.rotuloMes.toUpperCase()}`;
+        `LUCRO • ${infoMesSelecionado.rotuloMes.toUpperCase()}`;
     } else {
       filtrados = turnos;
-      document.getElementById('lblPeriodoTitulo').textContent = 'LUCRO LÍQUIDO LIVRE (ACUMULADO GERAL)';
+      document.getElementById('lblPeriodoTitulo').textContent = 'LUCRO LÍQUIDO (GERAL)';
     }
 
     const resumoAtual = FinanceEngine.resumirLista(filtrados);
@@ -610,8 +616,9 @@ const UIController = {
     document.getElementById('kpiBruto').textContent = FinanceEngine.moeda(resumoAtual.somaBruto);
     document.getElementById('kpiCustos').textContent = FinanceEngine.moeda(resumoAtual.somaCustos);
     document.getElementById('kpiTurnosCount').textContent =
-      `${filtrados.length} turno${filtrados.length === 1 ? '' : 's'}` +
-      (this.periodoAtual !== 'hoje' ? ` em ${resumoAtual.diasTrabalhados} dia${resumoAtual.diasTrabalhados === 1 ? '' : 's'}` : '');
+      this.periodoAtual === 'hoje'
+        ? `${filtrados.length} turno${filtrados.length === 1 ? '' : 's'}`
+        : `${resumoAtual.diasTrabalhados}d • ${filtrados.length}t`;
 
     document.getElementById('kpiMediaKm').textContent = FinanceEngine.moeda(resumoAtual.mediaKm);
     document.getElementById('kpiMediaHora').textContent =
@@ -647,10 +654,10 @@ const UIController = {
         <button type="button" class="period-nav-btn" onclick="UIController.navegarCiclo(-1)" title="Semana anterior">◀</button>
         <div class="period-nav-center">
           <span class="period-nav-title">
-            <span>📅 Semana ${infoSemana.numStr} / ${infoSemana.totalAno} (${infoSemana.anoISO})</span>
+            <span>📅 Semana ${infoSemana.numStr}/${infoSemana.totalAno}</span>
             ${btnHoje}
           </span>
-          <span class="period-nav-sub">Ciclo Seg–Dom: ${infoSemana.intervaloCurto}</span>
+          <span class="period-nav-sub">Seg–Dom • ${infoSemana.intervaloCurto} (${infoSemana.anoISO})</span>
         </div>
         <button type="button" class="period-nav-btn" onclick="UIController.navegarCiclo(1)" ${infoSemana.ehSemanaAtual ? 'disabled' : ''} title="Próxima semana">▶</button>
       `;
@@ -1371,17 +1378,28 @@ const UIController = {
         return `
           <div id="card-turno-${item.id}" class="activity-item" onclick="UIController.toggleDetalhesTurno('${item.id}')">
             <div class="act-header">
-              <span class="act-title">${diaSem}, ${dataCurta} • ${item.kmTotal} km</span>
+              <div class="act-title-wrap">
+                <span class="act-title">${diaSem}, ${dataCurta}</span>
+                <span class="act-km-badge">${item.kmTotal} km</span>
+              </div>
               <div class="act-header-right">
                 <span class="act-net">${FinanceEngine.moeda(item.lucroLiquido)}</span>
                 <span id="hint-turno-${item.id}" class="act-toggle-hint">▾ Raio-X</span>
               </div>
             </div>
-            <div class="act-meta-grid">
-              <span>Bruto: <b>${FinanceEngine.moeda(fatNum)}</b></span>
-              <span>Custos: <b>${FinanceEngine.moeda(cusNum)}</b></span>
-              <span>Líq/KM: <b class="text-green">${FinanceEngine.moeda(item.liquidoKm)}/km</b></span>
-              <span>${horasFormatada ? `Ritmo: <b>${horasFormatada} (${FinanceEngine.moeda(item.liquidoHora)}/h)</b>` : 'Horas: —'}</span>
+            <div class="kpi-row">
+              <div class="kpi-tile">
+                <span>Bruto</span>
+                <strong>${FinanceEngine.moeda(fatNum)}</strong>
+              </div>
+              <div class="kpi-tile">
+                <span>Custos</span>
+                <strong>${FinanceEngine.moeda(cusNum)}</strong>
+              </div>
+              <div class="kpi-tile">
+                <span>${horasFormatada ? `Líq/KM • ${horasFormatada}` : 'R$/KM Líq.'}</span>
+                <strong class="text-green">${FinanceEngine.moeda(item.liquidoKm)}</strong>
+              </div>
             </div>
 
             <div class="act-details-panel" onclick="event.stopPropagation()">
@@ -1621,21 +1639,20 @@ const UIController = {
       lblTotal.textContent = `${turnos.length} registro${turnos.length === 1 ? '' : 's'}`;
     }
 
-    const qtdBkp = infoBackup?.qtdTurnos || 0;
     const textoUltimoBackup = infoBackup
-      ? `<b class="text-white">${infoBackup.dataFormatada}</b> (${qtdBkp} turno${qtdBkp === 1 ? '' : 's'})`
-      : `<span class="text-yellow">Nenhum backup salvo</span>`;
+      ? infoBackup.dataFormatada
+      : 'Pendente';
 
     const elInfo = document.getElementById('infoSegurancaDados');
     if (elInfo) {
       elInfo.innerHTML = `
-        <div class="security-info-row">
-          <span>🔒 Memória blindada (Cofre Duplo)</span>
-          <b class="text-white">${turnos.length} turno${turnos.length === 1 ? '' : 's'}</b>
+        <div class="kpi-tile">
+          <span>🔒 Cofre Duplo</span>
+          <strong>${turnos.length} turno${turnos.length === 1 ? '' : 's'}</strong>
         </div>
-        <div class="security-info-row">
-          <span>☁️ Último arquivo de backup</span>
-          <span>${textoUltimoBackup}</span>
+        <div class="kpi-tile">
+          <span>☁️ Último Backup</span>
+          <strong class="${infoBackup ? '' : 'text-yellow'}">${textoUltimoBackup}</strong>
         </div>
       `;
     }
@@ -1826,7 +1843,16 @@ window.addEventListener('beforeinstallprompt', (e) => {
 });
 
 if ('serviceWorker' in navigator) {
+  let recarregandoSW = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (recarregandoSW) return;
+    recarregandoSW = true;
+    window.location.reload();
+  });
+
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    navigator.serviceWorker.register('./sw.js').then((reg) => {
+      reg.update().catch(() => {});
+    }).catch(() => {});
   });
 }
