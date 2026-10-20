@@ -272,6 +272,63 @@
       transition: width 0.3s ease;
     }
 
+    /* Gráfico Semanal Estilo Uber Driver */
+    .uber-chart {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      align-items: end;
+      height: 112px;
+      padding-top: 18px;
+      margin-top: 14px;
+      border-top: 1px solid var(--uber-border);
+    }
+    .chart-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      height: 100%;
+    }
+    .chart-val {
+      font-size: 0.64rem;
+      color: var(--uber-muted);
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .chart-bar-wrap {
+      width: 100%;
+      max-width: 28px;
+      height: 64px;
+      background: var(--uber-surface-elevated);
+      border-radius: 6px;
+      display: flex;
+      align-items: flex-end;
+      overflow: hidden;
+    }
+    .chart-bar {
+      width: 100%;
+      background: #4b5563;
+      border-radius: 6px;
+      transition: height 0.3s ease;
+    }
+    .chart-bar.hit-goal {
+      background: var(--uber-green);
+    }
+    .chart-bar.today {
+      background: var(--uber-blue);
+    }
+    .chart-bar.today.hit-goal {
+      background: var(--uber-green);
+    }
+    .chart-day {
+      font-size: 0.68rem;
+      color: var(--uber-muted);
+      font-weight: 700;
+      margin-top: 5px;
+      text-transform: uppercase;
+    }
+
     /* ==========================================================================
        5. MODO TURNO AO VIVO (DIA A DIA NA PISTA)
        ========================================================================== */
@@ -807,9 +864,12 @@
           <strong id="kpiKmRodado">0 km</strong>
         </div>
       </div>
+
+      <!-- Gráfico de Barras dos Últimos 7 Dias (Padrão Uber Driver) -->
+      <div id="grafico7Dias" class="uber-chart"></div>
     </div>
 
-    <!-- Card de Meta Diária -->
+    <!-- Card de Meta Diária Inteligente -->
     <div class="uber-card">
       <div class="goal-row">
         <span id="txtMetaInfo">🎯 Meta Líquida Hoje: <strong>R$ 200,00</strong></span>
@@ -817,6 +877,53 @@
       </div>
       <div class="goal-track">
         <div id="barraMetaFill" class="goal-fill"></div>
+      </div>
+      <div id="txtMetaRitmo" style="font-size:0.76rem; color:var(--uber-muted); margin-top:8px;"></div>
+    </div>
+
+    <!-- Ferramentas Rápidas do Motorista (Anti-Bagunça: Painéis Recolhidos) -->
+    <div class="uber-card">
+      <div class="card-header-row" style="margin-bottom:10px;">
+        <h2 class="card-title">⚡ Ferramentas de Pista</h2>
+        <span id="badgeOleoStatus" class="status-badge status-good" style="cursor:pointer;" onclick="UIController.configurarTrocaOleo()">🔧 Óleo OK</span>
+      </div>
+
+      <div class="grid-3" style="margin-bottom:4px;">
+        <button type="button" class="quick-exp-btn" onclick="UIController.togglePainel('painelSimuladorCorrida')">
+          <span>🚦</span>Vale a Corrida?
+        </button>
+        <button type="button" class="quick-exp-btn" onclick="UIController.configurarTrocaOleo()">
+          <span>🛢️</span>Troca de Óleo
+        </button>
+        <button type="button" class="quick-exp-btn" onclick="UIController.configurarCustoFixoMensal()">
+          <span>📅</span>Custo Fixo/Mês
+        </button>
+      </div>
+
+      <div id="infoManutencaoFixo" style="font-size:0.76rem; color:var(--uber-muted); margin-top:8px;"></div>
+
+      <!-- Simulador Rápido: "Vale a Pena Essa Corrida?" -->
+      <div id="painelSimuladorCorrida" class="collapsible-panel" style="margin-top:10px; margin-bottom:0;">
+        <div style="font-size:0.78rem; font-weight:800; color:var(--uber-white); margin-bottom:8px;">
+          🚦 Avaliador Rápido de Oferta (Uber / 99)
+        </div>
+        <div class="grid-3">
+          <div>
+            <label>Valor (R$)</label>
+            <input type="number" id="simValor" step="0.5" inputmode="decimal" placeholder="Ex: 18" oninput="UIController.simularCorrida()">
+          </div>
+          <div>
+            <label>KM c/ Busca</label>
+            <input type="number" id="simKm" step="0.5" inputmode="decimal" placeholder="Ex: 9.5" oninput="UIController.simularCorrida()">
+          </div>
+          <div>
+            <label>Tempo (min)</label>
+            <input type="number" id="simMin" inputmode="numeric" placeholder="Ex: 20" oninput="UIController.simularCorrida()">
+          </div>
+        </div>
+        <div id="resultadoSimulador" style="font-size:0.82rem; color:var(--uber-muted);">
+          Digite o valor e os KMs totais da chamada para ver o lucro real.
+        </div>
       </div>
     </div>
 
@@ -828,6 +935,12 @@
        ABA 2: FECHAR TURNO (CALCULADORA LIMPA E ORGANIZADA)
        ======================================================================== -->
   <section id="tab-fechar" class="tab-view">
+    <div id="bannerModoEdicao" class="uber-card" style="display:none; border-color:var(--uber-blue); background:var(--uber-blue-soft); padding:12px 16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span id="txtModoEdicao" style="font-size:0.84rem; font-weight:800;">✏️ Editando turno salvo</span>
+        <button type="button" class="chip-btn" onclick="UIController.cancelarEdicaoTurno()">Cancelar edição</button>
+      </div>
+    </div>
     <!-- Bloco 1: Odômetro e Tempo -->
     <div class="uber-card">
       <div class="card-header-row">
@@ -1061,7 +1174,9 @@
     CONSUMO_KML: 'meu_turno_consumo_kml',
     PRECO_LITRO: 'meu_turno_preco_litro',
     RASCUNHO_FORM: 'meu_turno_rascunho_form',
-    ULTIMO_BACKUP: 'meu_turno_ultimo_backup'
+    ULTIMO_BACKUP: 'meu_turno_ultimo_backup',
+    KM_PROX_OLEO: 'meu_turno_km_prox_oleo',
+    CUSTO_FIXO_MES: 'meu_turno_custo_fixo_mes'
   };
 
   const DEFAULTS = {
@@ -1931,6 +2046,24 @@
 
       const turnos = StorageService.obterTurnos();
 
+      // Se estiver editando um turno existente do histórico
+      if (this.idTurnoEditando) {
+        const idxEdit = turnos.findIndex(t => String(t.id) === String(this.idTurnoEditando));
+        if (idxEdit !== -1) {
+          await Cofre.criarPonto(`Antes de editar turno de ${turnos[idxEdit].data}`);
+          registro.id = turnos[idxEdit].id;
+          turnos[idxEdit] = registro;
+          if (!StorageService.salvarTurnos(turnos)) return;
+          this.cancelarEdicaoTurno(false);
+          Rascunho.limpar();
+          this.exibirRecibo(registro, calc, avaliacao);
+          this.atualizarTudo();
+          this.notificar('Turno atualizado com sucesso!');
+          return;
+        }
+        this.idTurnoEditando = null;
+      }
+
       // Evita turno duplicado por toque duplo / salvar duas vezes o mesmo formulário
       const assinatura = [entrada.dataISO, calc.kmTotal, entrada.faturamento, calc.custosTotais].join('|');
       const duplicado = turnos.find(t =>
@@ -2085,7 +2218,7 @@
       document.getElementById('kpiMediaHora').textContent = somaHoras > 0 ? `R$ ${mediaHora.toFixed(2)}/h` : '—';
       document.getElementById('kpiKmRodado').textContent = `${somaKm.toFixed(0)} km`;
 
-      // Meta Diária
+      // Meta Diária + Previsão Inteligente de Ritmo
       const meta = StorageService.obterNumero(KEYS.META_DIARIA, DEFAULTS.META_DIARIA);
       const pct = meta > 0 ? Math.min(100, Math.max(0, (lucroHoje / meta) * 100)) : 0;
       document.getElementById('barraMetaFill').style.width = `${pct}%`;
@@ -2094,6 +2227,243 @@
       document.getElementById('txtMetaInfo').innerHTML = lucroHoje >= meta
         ? `🏆 Meta Batida Hoje! <strong>R$ ${lucroHoje.toFixed(2)} / R$ ${meta.toFixed(2)}</strong>`
         : `🎯 Meta Hoje: <strong>R$ ${meta.toFixed(2)}</strong> (Falta R$ ${falta.toFixed(2)})`;
+
+      this.renderizarPrevisaoMeta(turnos, falta, lucroHoje >= meta);
+      this.renderizarGrafico7Dias(turnos, meta);
+      this.renderizarFerramentasPista(turnos);
+    },
+
+    renderizarPrevisaoMeta(turnos, falta, bateuMeta) {
+      const elRitmo = document.getElementById('txtMetaRitmo');
+      if (!elRitmo) return;
+      if (bateuMeta) {
+        elRitmo.innerHTML = `🔥 <b>Parabéns!</b> Tudo o que você rodar agora é lucro extra acima da meta.`;
+        return;
+      }
+      if (turnos.length === 0) {
+        elRitmo.textContent = 'Salve seu primeiro turno para ver a previsão de horas e corridas para bater a meta.';
+        return;
+      }
+
+      let totLucro = 0, totHoras = 0, totCorridas = 0;
+      turnos.slice(0, 14).forEach(t => {
+        totLucro += parseFloat(t.lucroLiquido) || 0;
+        totHoras += parseFloat(t.horas) || 0;
+        totCorridas += parseInt(t.corridas) || 0;
+      });
+
+      const liqPorHora = totHoras > 0 ? (totLucro / totHoras) : 0;
+      const liqPorCorrida = totCorridas > 0 ? (totLucro / totCorridas) : 0;
+
+      const partes = [];
+      if (liqPorHora > 0) {
+        const horasRestantes = falta / liqPorHora;
+        partes.push(`~<b>${this.formatarDuracaoMs(horasRestantes * 3600000)}</b> de pista`);
+      }
+      if (liqPorCorrida > 0) {
+        const corridasRestantes = Math.max(1, Math.ceil(falta / liqPorCorrida));
+        partes.push(`~<b>${corridasRestantes} corrida${corridasRestantes === 1 ? '' : 's'}</b>`);
+      }
+
+      elRitmo.innerHTML = partes.length > 0
+        ? `⚡ No seu ritmo médio: faltam ${partes.join(' ou ')} para bater a meta.`
+        : `Continue registrando horas e corridas para calcular seu ritmo automático.`;
+    },
+
+    renderizarGrafico7Dias(turnos, meta) {
+      const container = document.getElementById('grafico7Dias');
+      if (!container) return;
+
+      const nomesDias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+      const hoje = new Date();
+      const dias = [];
+
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - i);
+        const dataBR = d.toLocaleDateString('pt-BR');
+        const somaDia = turnos
+          .filter(t => t.data === dataBR)
+          .reduce((acc, t) => acc + (parseFloat(t.lucroLiquido) || 0), 0);
+
+        dias.push({
+          rotulo: i === 0 ? 'Hoje' : nomesDias[d.getDay()],
+          valor: somaDia,
+          ehHoje: i === 0
+        });
+      }
+
+      const maxVal = Math.max(meta || 200, ...dias.map(d => d.valor), 50);
+
+      container.innerHTML = dias.map(d => {
+        const alturaPct = d.valor > 0 ? Math.max(8, Math.min(100, Math.round((d.valor / maxVal) * 100))) : 4;
+        const classesBarra = [
+          'chart-bar',
+          d.ehHoje ? 'today' : '',
+          d.valor >= meta && meta > 0 ? 'hit-goal' : ''
+        ].filter(Boolean).join(' ');
+
+        const txtVal = d.valor > 0 ? `R$${Math.round(d.valor)}` : '—';
+        return `
+          <div class="chart-col">
+            <span class="chart-val">${txtVal}</span>
+            <div class="chart-bar-wrap">
+              <div class="${classesBarra}" style="height:${alturaPct}%"></div>
+            </div>
+            <span class="chart-day" style="${d.ehHoje ? 'color:var(--uber-white);' : ''}">${d.rotulo}</span>
+          </div>
+        `;
+      }).join('');
+    },
+
+    /* --- Ferramentas de Pista: Vale a Corrida?, Troca de Óleo e Custos Fixos --- */
+    renderizarFerramentasPista(turnos) {
+      const kmProxOleo = StorageService.obterNumero(KEYS.KM_PROX_OLEO, 0);
+      const custoFixoMes = StorageService.obterNumero(KEYS.CUSTO_FIXO_MES, 0);
+      const ultimoComKm = turnos.find(t => t.kmFinal && t.kmFinal > 0);
+      const kmAtual = ultimoComKm ? Number(ultimoComKm.kmFinal) : 0;
+
+      const badge = document.getElementById('badgeOleoStatus');
+      const info = document.getElementById('infoManutencaoFixo');
+      if (!badge || !info) return;
+
+      const linhasInfo = [];
+
+      if (kmProxOleo > 0 && kmAtual > 0) {
+        const faltaKm = kmProxOleo - kmAtual;
+        if (faltaKm <= 0) {
+          badge.className = 'status-badge status-bad';
+          badge.textContent = '🛢️ Trocar Óleo!';
+          linhasInfo.push(`⚠️ <b style="color:var(--uber-red)">Troca de óleo vencida há ${Math.abs(faltaKm)} km!</b> (Meta: ${kmProxOleo} km)`);
+        } else if (faltaKm <= 600) {
+          badge.className = 'status-badge status-warn';
+          badge.textContent = `🛢️ Óleo: ${faltaKm} km`;
+          linhasInfo.push(`🔔 Faltam <b style="color:var(--uber-yellow)">${faltaKm} km</b> para a troca de óleo (${kmProxOleo} km).`);
+        } else {
+          badge.className = 'status-badge status-good';
+          badge.textContent = `🛢️ Óleo: ${faltaKm} km`;
+          linhasInfo.push(`🛢️ Próxima troca de óleo em <b>${kmProxOleo} km</b> (faltam ${faltaKm} km).`);
+        }
+      } else if (kmProxOleo > 0) {
+        badge.className = 'status-badge status-good';
+        badge.textContent = `🛢️ ${kmProxOleo} km`;
+        linhasInfo.push(`🛢️ Troca de óleo programada para <b>${kmProxOleo} km</b>.`);
+      } else {
+        badge.className = 'status-badge status-warn';
+        badge.textContent = '🛢️ Definir Óleo';
+      }
+
+      if (custoFixoMes > 0) {
+        const custoDia = (custoFixoMes / 26).toFixed(2);
+        linhasInfo.push(`📅 Custo fixo: <b>R$ ${custoFixoMes.toFixed(0)}/mês</b> (~<b>R$ ${custoDia}/dia</b> p/ 26 dias).`);
+        const campoDiaria = document.getElementById('diariaCarro');
+        if (campoDiaria && !campoDiaria.value) {
+          campoDiaria.placeholder = `Sugerido: ${custoDia}`;
+        }
+      }
+
+      info.innerHTML = linhasInfo.join('<br>') || 'Toque nos botões acima para simular uma corrida, programar troca de óleo ou calcular seu custo fixo diário.';
+    },
+
+    simularCorrida() {
+      const valor = this.lerNumero('simValor');
+      const km = this.lerNumero('simKm');
+      const min = this.lerNumero('simMin');
+      const out = document.getElementById('resultadoSimulador');
+      if (!out) return;
+
+      if (valor <= 0 || km <= 0) {
+        out.innerHTML = 'Digite o valor da oferta (R$) e os KMs totais (incluindo buscar o passageiro).';
+        return;
+      }
+
+      const custoKmManut = StorageService.obterNumero(KEYS.CUSTO_KM, DEFAULTS.CUSTO_KM);
+      const kml = StorageService.obterNumero(KEYS.CONSUMO_KML, 10);
+      const precoLitro = StorageService.obterNumero(KEYS.PRECO_LITRO, 5.80);
+      const custoCombKm = kml > 0 ? (precoLitro / kml) : 0.55;
+
+      const custoTotalCorrida = km * (custoKmManut + custoCombKm);
+      const lucroCorrida = valor - custoTotalCorrida;
+      const reaisPorKmBruto = valor / km;
+      const reaisPorKmLiq = lucroCorrida / km;
+      const ganhoHoraLiq = min > 0 ? (lucroCorrida / (min / 60)) : 0;
+
+      let veredito = '🟢 <b>VALE A PENA ACEITAR!</b>';
+      let cor = 'var(--uber-green)';
+      if (reaisPorKmLiq < 0.85 || (min > 0 && ganhoHoraLiq < 22)) {
+        veredito = '🔴 <b>RECUSAR (Margem baixa / Prejuízo)</b>';
+        cor = 'var(--uber-red)';
+      } else if (reaisPorKmLiq < 1.30 || (min > 0 && ganhoHoraLiq < 32)) {
+        veredito = '🟡 <b>CORRIDA MÉDIA (Avalie o destino)</b>';
+        cor = 'var(--uber-yellow)';
+      }
+
+      out.innerHTML = `
+        <div style="padding:10px; border-radius:10px; background:var(--uber-surface-elevated); border-left:4px solid ${cor}; margin-top:4px;">
+          <div style="color:${cor}; font-size:0.88rem; margin-bottom:4px;">${veredito}</div>
+          <div style="color:var(--uber-white); font-weight:700;">
+            Lucro Livre: R$ ${lucroCorrida.toFixed(2)} • Líq: R$ ${reaisPorKmLiq.toFixed(2)}/km
+            ${min > 0 ? ` • R$ ${ganhoHoraLiq.toFixed(0)}/h` : ''}
+          </div>
+          <div style="font-size:0.74rem; color:var(--uber-muted); margin-top:2px;">
+            Bruto: R$ ${reaisPorKmBruto.toFixed(2)}/km • Custo estimado da corrida: R$ ${custoTotalCorrida.toFixed(2)}
+          </div>
+        </div>
+      `;
+    },
+
+    async configurarTrocaOleo() {
+      const turnos = StorageService.obterTurnos();
+      const ultimoComKm = turnos.find(t => t.kmFinal && t.kmFinal > 0);
+      const kmAtual = ultimoComKm ? Number(ultimoComKm.kmFinal) : 0;
+      const salvo = StorageService.obterNumero(KEYS.KM_PROX_OLEO, kmAtual > 0 ? kmAtual + 7000 : 50000);
+
+      const novoKm = await Sheet.pedirValor({
+        icone: '🛢️',
+        titulo: 'Próxima troca de óleo',
+        subtitulo: kmAtual > 0
+          ? `Seu último odômetro salvo é <b>${kmAtual} km</b>. Com quantos KM será a próxima troca?`
+          : 'Digite o KM do odômetro em que você deve fazer a próxima troca de óleo:',
+        valorInicial: String(salvo),
+        sufixo: 'km',
+        inteiro: true,
+        atalhos: [5000, 7000, 10000],
+        modoAtalho: 'somar',
+        textoOk: 'Salvar alerta de óleo',
+        variante: 'green'
+      });
+      if (novoKm === null || novoKm <= 0) return;
+
+      StorageService.salvarValor(KEYS.KM_PROX_OLEO, novoKm);
+      this.atualizarPainel();
+      this.notificar(`Alerta de troca de óleo salvo para ${novoKm} km!`);
+    },
+
+    async configurarCustoFixoMensal() {
+      const atual = StorageService.obterNumero(KEYS.CUSTO_FIXO_MES, 0);
+      const novoValor = await Sheet.pedirValor({
+        icone: '📅',
+        titulo: 'Custos fixos do mês',
+        subtitulo: 'Some IPVA + Seguro/Proteção + Parcela ou Aluguel mensal + Celular. O app divide por 26 dias trabalhados para achar seu custo fixo diário.',
+        valorInicial: atual > 0 ? String(atual) : '',
+        prefixo: 'R$',
+        atalhos: [300, 600, 1200, 2000],
+        modoAtalho: 'definir',
+        permitirVazio: true,
+        textoOk: 'Salvar custo mensal',
+        variante: 'blue'
+      });
+      if (novoValor === null) return;
+
+      StorageService.salvarValor(KEYS.CUSTO_FIXO_MES, novoValor);
+      if (novoValor > 0) {
+        const diaria = (novoValor / 26).toFixed(2);
+        document.getElementById('diariaCarro').value = diaria;
+        Rascunho.salvar();
+        this.notificar(`Custo fixo diário (R$ ${diaria}/dia) preenchido!`);
+      } else {
+        this.notificar('Custo fixo mensal zerado.');
+      }
+      this.atualizarPainel();
     },
 
     async editarMetaDiaria() {
@@ -2139,9 +2509,11 @@
           <div class="activity-item">
             <div class="act-header">
               <span class="act-title">${item.data} • ${item.kmTotal} km</span>
-              <div style="display:flex; align-items:center; gap:10px;">
+              <div style="display:flex; align-items:center; gap:6px;">
                 <span class="act-net">R$ ${item.lucroLiquido}</span>
-                <button class="chip-btn" style="padding:3px 8px;" onclick="UIController.excluirTurno('${item.id}')" title="Excluir">✕</button>
+                <button class="chip-btn" style="padding:3px 7px;" onclick="UIController.compartilharTurnoId('${item.id}')" title="Copiar p/ WhatsApp">📲</button>
+                <button class="chip-btn" style="padding:3px 7px;" onclick="UIController.editarTurno('${item.id}')" title="Editar turno">✎</button>
+                <button class="chip-btn" style="padding:3px 7px;" onclick="UIController.excluirTurno('${item.id}')" title="Excluir">✕</button>
               </div>
             </div>
             <div class="act-meta">
@@ -2153,6 +2525,55 @@
           </div>
         `;
       }).join('');
+    },
+
+    compartilharTurnoId(id) {
+      const reg = StorageService.obterTurnos().find(t => String(t.id) === String(id));
+      if (!reg) return;
+      const texto =
+        `🖤 *FECHAMENTO MEU TURNO (${reg.data})*\n` +
+        `💰 *Bruto:* R$ ${Number(reg.faturamento || 0).toFixed(2)}\n` +
+        `⛽ *Custos Totais:* R$ ${Number(reg.custosTotais || 0).toFixed(2)}\n` +
+        `✅ *LUCRO LÍQUIDO:* R$ ${reg.lucroLiquido}\n` +
+        `🛣️ *KM:* ${reg.kmTotal} km (Líq: R$ ${reg.liquidoKm}/km)` +
+        (reg.horas > 0 ? `\n⏱️ *Horas:* ${reg.horas}h (Líq: R$ ${reg.liquidoHora}/h)` : '');
+
+      navigator.clipboard.writeText(texto).then(() => {
+        this.notificar(`Resumo de ${reg.data} copiado p/ WhatsApp!`);
+      });
+    },
+
+    editarTurno(id) {
+      const reg = StorageService.obterTurnos().find(t => String(t.id) === String(id));
+      if (!reg) return;
+
+      this.idTurnoEditando = reg.id;
+      document.getElementById('bannerModoEdicao').style.display = 'block';
+      document.getElementById('txtModoEdicao').textContent = `✏️ Editando turno de ${reg.data}`;
+
+      if (reg.dataISO) document.getElementById('dataTurno').value = reg.dataISO;
+      document.getElementById('horasTrabalhadas').value = reg.horas || '';
+      document.getElementById('kmInicial').value = reg.kmInicial || '';
+      document.getElementById('kmFinal').value = reg.kmFinal || '';
+      document.getElementById('kmTotalInput').value = reg.kmTotal || '';
+      document.getElementById('corridas').value = reg.corridas || '';
+      document.getElementById('faturamento').value = reg.faturamento || '';
+      document.getElementById('combustivel').value = reg.combustivel || '';
+      document.getElementById('alimentacao').value = reg.alimentacao || '';
+      document.getElementById('diariaCarro').value = reg.diariaCarro || '';
+      document.getElementById('outrosGastos').value = reg.outrosGastos || '';
+
+      this.navegarAba('fechar');
+      this.notificar(`Editando turno de ${reg.data}. Altere e toque em Salvar!`);
+    },
+
+    cancelarEdicaoTurno(mostrarAviso = true) {
+      this.idTurnoEditando = null;
+      const banner = document.getElementById('bannerModoEdicao');
+      if (banner) banner.style.display = 'none';
+      Rascunho.limpar();
+      document.getElementById('dataTurno').value = this.hojeISO();
+      if (mostrarAviso) this.notificar('Edição cancelada.');
     },
 
     async excluirTurno(id) {
