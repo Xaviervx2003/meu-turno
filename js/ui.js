@@ -3,8 +3,11 @@
    ========================================================================== */
 const UIController = {
   periodoAtual: 'hoje',
+  abaMetaAtiva: 'dia',
   offsetSemana: 0,
   offsetMes: 0,
+  indiceBarraSelecionada: null,
+  ultimosDiasGrafico: [],
   filtroHistorico: 'todos',
   ultimoTextoWhatsApp: '',
   deferredPrompt: null,
@@ -70,6 +73,12 @@ const UIController = {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   },
 
+  abrirResumoSemanaRapido() {
+    this.navegarAba('painel');
+    const btnSemana = document.getElementById('seg-7dias');
+    this.mudarPeriodo('7dias', btnSemana);
+  },
+
   togglePainel(id) {
     document.getElementById(id).classList.toggle('open');
   },
@@ -100,9 +109,9 @@ const UIController = {
       txt.textContent = 'Fora de turno';
 
       card.innerHTML = `
-        <div class="card-header-row" style="margin-bottom:10px;">
+        <div class="card-header-row compact">
           <h2 class="card-title">Pronto para rodar?</h2>
-          <span style="font-size:0.75rem; color:var(--uber-muted);">Salva hora e KM inicial</span>
+          <span class="text-muted-sm">Salva hora e KM inicial</span>
         </div>
         <button class="btn-uber-go" onclick="UIController.iniciarTurnoNaPista()">
           <span>▶ INICIAR TURNO AGORA</span>
@@ -129,45 +138,46 @@ const UIController = {
       : `<span class="status-badge status-good">🟢 EM TURNO DESDE ${ativo.horaFormatada}</span>`;
 
     const infoPausaHTML = pausaTotalMs > 0
-      ? ` • Pausa descontada: <b style="color:var(--uber-yellow);">${this.formatarDuracaoMs(pausaTotalMs)}</b>`
+      ? ` • Pausa: <b class="text-yellow">${this.formatarDuracaoMs(pausaTotalMs)}</b>`
       : '';
 
     const botaoPausaHTML = emPausa
       ? `<button type="button" class="btn-uber-green" style="margin-bottom:10px;" onclick="UIController.alternarPausaTurno()">
            ▶ Retomar Turno (Voltar p/ Pista)
          </button>`
-      : `<button type="button" class="btn-uber-pause" style="margin-bottom:10px;" onclick="UIController.alternarPausaTurno()">
+      : `<button type="button" class="btn-uber-pause" onclick="UIController.alternarPausaTurno()">
            <span>☕ Pausar p/ Almoço ou Descanso</span>
          </button>`;
 
     card.innerHTML = `
-      <div class="card-header-row" style="margin-bottom:8px;">
+      <div class="card-header-row compact">
         ${badgeHTML}
-        <span style="font-size:0.8rem; font-weight:700;">Rodando: ${this.formatarDuracaoMs(tempoLiquidoMs)}</span>
+        <strong class="text-muted-sm text-white">Rodando: ${this.formatarDuracaoMs(tempoLiquidoMs)}</strong>
       </div>
-      <div style="font-size:0.83rem; color:var(--uber-muted); margin-bottom:12px;">
-        KM Inicial: <b style="color:#fff;">${ativo.kmInicial || '—'}</b> •
-        Gastos hoje: <b style="color:#fff;">R$ ${totalGastosParciais.toFixed(2)}</b>${infoPausaHTML}
+      <div class="live-shift-summary">
+        KM Inicial: <b class="text-white">${ativo.kmInicial || '—'}</b> •
+        Gastos hoje: <b class="text-white">${FinanceEngine.moeda(totalGastosParciais)}</b>${infoPausaHTML}
       </div>
 
       ${botaoPausaHTML}
 
-      <div style="font-size:0.72rem; color:var(--uber-muted); text-transform:uppercase; font-weight:700;">
-        Anote gastos rápidos na rua:
-      </div>
+      <div class="live-shift-section-label">Anote gastos rápidos na rua:</div>
       <div class="quick-expense-grid">
         <button class="quick-exp-btn" onclick="UIController.lancarGastoRapido('combustivel', 'Combustível / GNV', '⛽')">
-          <span>⛽</span>+ Combustível<br><small style="color:var(--uber-muted)">R$ ${(ativo.combustivel || 0).toFixed(0)}</small>
+          <span>⛽</span>+ Combustível
+          <small>${FinanceEngine.moedaCurta(ativo.combustivel || 0)}</small>
         </button>
         <button class="quick-exp-btn" onclick="UIController.lancarGastoRapido('alimentacao', 'Alimentação / Água', '🍔')">
-          <span>🍔</span>+ Refeição<br><small style="color:var(--uber-muted)">R$ ${(ativo.alimentacao || 0).toFixed(0)}</small>
+          <span>🍔</span>+ Refeição
+          <small>${FinanceEngine.moedaCurta(ativo.alimentacao || 0)}</small>
         </button>
         <button class="quick-exp-btn" onclick="UIController.lancarGastoRapido('outrosGastos', 'Pedágio / Lavagem / Outros', '🧼')">
-          <span>🧼</span>+ Outros<br><small style="color:var(--uber-muted)">R$ ${(ativo.outrosGastos || 0).toFixed(0)}</small>
+          <span>🧼</span>+ Outros
+          <small>${FinanceEngine.moedaCurta(ativo.outrosGastos || 0)}</small>
         </button>
       </div>
 
-      <div class="grid-2" style="margin-top:10px;">
+      <div class="grid-2">
         <button class="btn-uber-primary" onclick="UIController.prepararEncerramentoTurno()">
           🏁 Encerrar Turno
         </button>
@@ -246,7 +256,7 @@ const UIController = {
     const valor = await Sheet.pedirValor({
       icone: icone || '💸',
       titulo: nomeAmigavel,
-      subtitulo: `Quanto você gastou agora? Já anotado neste turno: <b>R$ ${acumulado.toFixed(2)}</b>`,
+      subtitulo: `Quanto você gastou agora? Já anotado neste turno: <b>${FinanceEngine.moeda(acumulado)}</b>`,
       placeholder: '0,00',
       prefixo: 'R$',
       atalhos: [10, 20, 50, 100],
@@ -258,7 +268,7 @@ const UIController = {
     ativo[campo] = Number(((ativo[campo] || 0) + valor).toFixed(2));
     StorageService.salvarTurnoAtivo(ativo);
     this.renderizarTurnoVivo();
-    this.notificar(`+ R$ ${valor.toFixed(2)} somado em ${nomeAmigavel}!`);
+    this.notificar(`+ ${FinanceEngine.moeda(valor)} somado em ${nomeAmigavel}!`);
   },
 
   prepararEncerramentoTurno() {
@@ -429,7 +439,7 @@ const UIController = {
       const salvarMesmoAssim = await Sheet.confirmar({
         icone: '🧐',
         titulo: 'Esse turno já foi salvo',
-        subtitulo: `Já existe um fechamento de <b>${duplicado.data}</b> com os mesmos valores (Lucro <b>R$ ${duplicado.lucroLiquido}</b>). Salvar outra vez vai duplicar seus ganhos.`,
+        subtitulo: `Já existe um fechamento de <b>${duplicado.data}</b> com os mesmos valores (Lucro <b>${FinanceEngine.moeda(duplicado.lucroLiquido)}</b>). Salvar outra vez vai duplicar seus ganhos.`,
         textoOk: 'Salvar mesmo assim',
         textoCancelar: 'Não salvar',
         variante: 'danger'
@@ -460,15 +470,15 @@ const UIController = {
         <span class="status-badge ${avaliacao.classe}">${avaliacao.rotulo}</span>
       </div>
       <div class="receipt-row"><span>KM Total Rodado</span><span>${reg.kmTotal} km</span></div>
-      <div class="receipt-row"><span>Faturamento Bruto</span><span>R$ ${reg.faturamento.toFixed(2)}</span></div>
-      <div class="receipt-row"><span>Despesas do Dia</span><span style="color:var(--uber-red)">- R$ ${calc.gastosDiretos.toFixed(2)}</span></div>
-      <div class="receipt-row"><span>Reserva Manutenção (KM)</span><span style="color:var(--uber-yellow)">- R$ ${calc.provisaoManut.toFixed(2)}</span></div>
-      <div class="receipt-row"><span>Ganho por KM (Bruto / Líq.)</span><span>R$ ${reg.brutoKm} / <b>R$ ${reg.liquidoKm}</b></span></div>
-      ${reg.horas > 0 ? `<div class="receipt-row"><span>Ganho Líquido por Hora</span><span>R$ ${reg.liquidoHora}/h</span></div>` : ''}
-      <div class="receipt-row"><span>Ticket Médio (${reg.corridas} corridas)</span><span>R$ ${reg.ticketMedio}</span></div>
+      <div class="receipt-row"><span>Faturamento Bruto</span><span>${FinanceEngine.moeda(reg.faturamento)}</span></div>
+      <div class="receipt-row"><span>Despesas do Dia</span><span class="text-red">- ${FinanceEngine.moeda(calc.gastosDiretos)}</span></div>
+      <div class="receipt-row"><span>Reserva Manutenção (KM)</span><span class="text-yellow">- ${FinanceEngine.moeda(calc.provisaoManut)}</span></div>
+      <div class="receipt-row"><span>Ganho por KM (Bruto / Líq.)</span><span>${FinanceEngine.moeda(reg.brutoKm)} / <b>${FinanceEngine.moeda(reg.liquidoKm)}</b></span></div>
+      ${reg.horas > 0 ? `<div class="receipt-row"><span>Ganho Líquido por Hora</span><span>${FinanceEngine.moeda(reg.liquidoHora)}/h</span></div>` : ''}
+      <div class="receipt-row"><span>Ticket Médio (${reg.corridas} corridas)</span><span>${FinanceEngine.moeda(reg.ticketMedio)}</span></div>
       <div class="receipt-total">
         <span>Lucro Líquido (${calc.margemLiquida}%)</span>
-        <span style="color:${corLucro}">R$ ${reg.lucroLiquido}</span>
+        <span style="color:${corLucro}">${FinanceEngine.moeda(reg.lucroLiquido)}</span>
       </div>
       <button type="button" class="btn-uber-ghost" style="margin-top:14px;" onclick="UIController.copiarWhatsApp()">
         📲 Copiar Resumo para WhatsApp
@@ -477,12 +487,12 @@ const UIController = {
 
     this.ultimoTextoWhatsApp =
       `🖤 *FECHAMENTO MEU TURNO (${reg.data})*\n` +
-      `💰 *Bruto:* R$ ${reg.faturamento.toFixed(2)}\n` +
-      `⛽ *Custos Totais:* R$ ${reg.custosTotais.toFixed(2)}\n` +
-      `✅ *LUCRO LÍQUIDO:* R$ ${reg.lucroLiquido} (${calc.margemLiquida}%)\n` +
-      `🛣️ *KM:* ${reg.kmTotal} km (Líq: R$ ${reg.liquidoKm}/km)\n` +
-      (reg.horas > 0 ? `⏱️ *Horas:* ${reg.horas}h (Líq: R$ ${reg.liquidoHora}/h)\n` : '') +
-      `🏁 *Corridas:* ${reg.corridas} (Ticket: R$ ${reg.ticketMedio})`;
+      `💰 *Bruto:* ${FinanceEngine.moeda(reg.faturamento)}\n` +
+      `⛽ *Custos Totais:* ${FinanceEngine.moeda(reg.custosTotais)}\n` +
+      `✅ *LUCRO LÍQUIDO:* ${FinanceEngine.moeda(reg.lucroLiquido)} (${calc.margemLiquida}%)\n` +
+      `🛣️ *KM:* ${reg.kmTotal} km (Líq: ${FinanceEngine.moeda(reg.liquidoKm)}/km)\n` +
+      (reg.horas > 0 ? `⏱️ *Horas:* ${reg.horas}h (Líq: ${FinanceEngine.moeda(reg.liquidoHora)}/h)\n` : '') +
+      `🏁 *Corridas:* ${reg.corridas} (Ticket: ${FinanceEngine.moeda(reg.ticketMedio)})`;
   },
 
   copiarWhatsApp() {
@@ -493,16 +503,39 @@ const UIController = {
   },
 
   /* ==========================================================================
-     PAINEL DE GANHOS, SEMANAS DO ANO (01–52), COMPARATIVO & META SEMANAL
+     PAINEL DE GANHOS, SEMANAS DO ANO (01–52), COMPARATIVO & CARD DE METAS UNIFICADO
      ========================================================================== */
   mudarPeriodo(periodo, btn) {
     this.periodoAtual = periodo;
+    this.indiceBarraSelecionada = null;
     document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
+
+    // Sincroniza automaticamente a aba do Card de Meta com o período escolhido
+    if (periodo === '7dias') {
+      this.abaMetaAtiva = 'semana';
+    } else if (periodo === 'hoje') {
+      this.abaMetaAtiva = 'dia';
+    }
+
     this.atualizarPainel();
   },
 
+  alternarAbaMeta(modo) {
+    this.abaMetaAtiva = modo;
+    this.atualizarPainel();
+  },
+
+  editarMetaAtiva() {
+    if (this.abaMetaAtiva === 'semana') {
+      this.editarMetaSemanal();
+    } else {
+      this.editarMetaDiaria();
+    }
+  },
+
   navegarCiclo(delta) {
+    this.indiceBarraSelecionada = null;
     if (this.periodoAtual === '7dias') {
       this.offsetSemana = Math.min(0, this.offsetSemana + delta);
     } else if (this.periodoAtual === 'mes') {
@@ -512,6 +545,7 @@ const UIController = {
   },
 
   voltarCicloAtual() {
+    this.indiceBarraSelecionada = null;
     this.offsetSemana = 0;
     this.offsetMes = 0;
     this.atualizarPainel();
@@ -522,20 +556,26 @@ const UIController = {
     const agora = new Date();
     const hojeStr = agora.toLocaleDateString('pt-BR');
 
-    // Lucro de hoje para a pílula superior e barra de meta diária
+    // Atualiza o badge da Semana Atual no canto direito da Top Bar
+    const semanaHoje = CalendarEngine.obterSemanaPorOffset(0);
+    const badgeSemanaTopo = document.getElementById('badgeSemanaTopo');
+    if (badgeSemanaTopo) {
+      badgeSemanaTopo.textContent = `S${semanaHoje.numStr}`;
+      badgeSemanaTopo.title = `Semana ${semanaHoje.numStr}/${semanaHoje.totalAno} (${semanaHoje.intervaloCurto})`;
+    }
+
+    // Lucro de hoje para a pílula central superior
     const lucroHoje = turnos
       .filter(t => t.data === hojeStr)
       .reduce((acc, t) => acc + (parseFloat(t.lucroLiquido) || 0), 0);
 
-    document.getElementById('pillLucroHoje').textContent = `R$ ${lucroHoje.toFixed(2)}`;
+    document.getElementById('pillLucroHoje').textContent = FinanceEngine.moeda(lucroHoje);
 
     const infoSemanaSelecionada = CalendarEngine.obterSemanaPorOffset(this.offsetSemana);
     const infoMesSelecionado = CalendarEngine.obterMesPorOffset(this.offsetMes);
 
-    // 1. Renderiza a barra de navegação de Semana do Ano (Semana 01 a 52) ou Mês (#1)
     this.renderizarBarraNavegacaoCiclo(infoSemanaSelecionada, infoMesSelecionado);
 
-    // 2. Filtra os turnos do período ativo e do período imediatamente anterior (para o comparativo #2)
     let filtrados = [];
     let filtradosAnteriores = [];
     let rotuloAnterior = '';
@@ -564,34 +604,23 @@ const UIController = {
     const resumoAnterior = FinanceEngine.resumirLista(filtradosAnteriores);
 
     const elLucro = document.getElementById('kpiLucroLiquido');
-    elLucro.textContent = `R$ ${resumoAtual.somaLucro.toFixed(2)}`;
+    elLucro.textContent = FinanceEngine.moeda(resumoAtual.somaLucro);
     elLucro.style.color = resumoAtual.somaLucro >= 0 ? 'var(--uber-white)' : 'var(--uber-red)';
 
-    document.getElementById('kpiBruto').textContent = `R$ ${resumoAtual.somaBruto.toFixed(2)}`;
-    document.getElementById('kpiCustos').textContent = `R$ ${resumoAtual.somaCustos.toFixed(2)}`;
+    document.getElementById('kpiBruto').textContent = FinanceEngine.moeda(resumoAtual.somaBruto);
+    document.getElementById('kpiCustos').textContent = FinanceEngine.moeda(resumoAtual.somaCustos);
     document.getElementById('kpiTurnosCount').textContent =
       `${filtrados.length} turno${filtrados.length === 1 ? '' : 's'} (${resumoAtual.diasTrabalhados}d)`;
 
-    document.getElementById('kpiMediaKm').textContent = `R$ ${resumoAtual.mediaKm.toFixed(2)}`;
+    document.getElementById('kpiMediaKm').textContent = FinanceEngine.moeda(resumoAtual.mediaKm);
     document.getElementById('kpiMediaHora').textContent =
-      resumoAtual.somaHoras > 0 ? `R$ ${resumoAtual.mediaHora.toFixed(2)}/h` : '—';
+      resumoAtual.somaHoras > 0 ? `${FinanceEngine.moeda(resumoAtual.mediaHora)}/h` : '—';
     document.getElementById('kpiKmRodado').textContent = `${resumoAtual.somaKm.toFixed(0)} km`;
 
-    // 3. Renderiza o Comparativo Automático com a Semana / Mês Anterior (#2)
     this.renderizarComparativoPeriodo(resumoAtual.somaLucro, resumoAnterior.somaLucro, rotuloAnterior);
 
-    // 4. Meta Diária + Meta Semanal (Segunda a Domingo) + Contador de Dias Rodados (#3)
     const metaDiaria = StorageService.obterNumero(KEYS.META_DIARIA, DEFAULTS.META_DIARIA);
-    const pctDiaria = metaDiaria > 0 ? Math.min(100, Math.max(0, (lucroHoje / metaDiaria) * 100)) : 0;
-    document.getElementById('barraMetaFill').style.width = `${pctDiaria}%`;
-
-    const faltaHoje = Math.max(0, metaDiaria - lucroHoje);
-    document.getElementById('txtMetaInfo').innerHTML = lucroHoje >= metaDiaria
-      ? `🏆 Meta Hoje Batida! <strong>R$ ${lucroHoje.toFixed(2)} / R$ ${metaDiaria.toFixed(2)}</strong>`
-      : `🎯 Meta Hoje: <strong>R$ ${metaDiaria.toFixed(2)}</strong> (Falta R$ ${faltaHoje.toFixed(2)})`;
-
-    this.renderizarPrevisaoMeta(turnos, faltaHoje, lucroHoje >= metaDiaria);
-    this.renderizarMetaSemanal(turnos, infoSemanaSelecionada);
+    this.renderizarCardMetaUnificada(turnos, lucroHoje, metaDiaria, infoSemanaSelecionada);
     this.renderizarGrafico7Dias(turnos, metaDiaria, infoSemanaSelecionada);
     this.renderizarInsightDiaSemana(turnos);
     this.renderizarFerramentasPista(turnos);
@@ -610,14 +639,15 @@ const UIController = {
 
     if (this.periodoAtual === '7dias') {
       const btnHoje = !infoSemana.ehSemanaAtual
-        ? `<button type="button" class="chip-btn" style="padding:3px 8px; margin-left:6px;" onclick="UIController.voltarCicloAtual()">Atual</button>`
-        : `<span class="status-badge status-good" style="padding:2px 7px; font-size:0.65rem; margin-left:6px;">ATUAL</span>`;
+        ? `<button type="button" class="chip-btn" onclick="UIController.voltarCicloAtual()">Atual</button>`
+        : `<span class="status-badge status-good">ATUAL</span>`;
 
       nav.innerHTML = `
         <button type="button" class="period-nav-btn" onclick="UIController.navegarCiclo(-1)" title="Semana anterior">◀</button>
         <div class="period-nav-center">
           <span class="period-nav-title">
-            📅 Semana ${infoSemana.numStr} / ${infoSemana.totalAno} (${infoSemana.anoISO}) ${btnHoje}
+            <span>📅 Semana ${infoSemana.numStr} / ${infoSemana.totalAno} (${infoSemana.anoISO})</span>
+            ${btnHoje}
           </span>
           <span class="period-nav-sub">Ciclo Seg–Dom: ${infoSemana.intervaloCurto}</span>
         </div>
@@ -625,13 +655,16 @@ const UIController = {
       `;
     } else if (this.periodoAtual === 'mes') {
       const btnAtual = !infoMes.ehMesAtual
-        ? `<button type="button" class="chip-btn" style="padding:3px 8px; margin-left:6px;" onclick="UIController.voltarCicloAtual()">Atual</button>`
-        : `<span class="status-badge status-good" style="padding:2px 7px; font-size:0.65rem; margin-left:6px;">ATUAL</span>`;
+        ? `<button type="button" class="chip-btn" onclick="UIController.voltarCicloAtual()">Atual</button>`
+        : `<span class="status-badge status-good">ATUAL</span>`;
 
       nav.innerHTML = `
         <button type="button" class="period-nav-btn" onclick="UIController.navegarCiclo(-1)" title="Mês anterior">◀</button>
         <div class="period-nav-center">
-          <span class="period-nav-title">🗓️ ${infoMes.rotuloMes} ${btnAtual}</span>
+          <span class="period-nav-title">
+            <span>🗓️ ${infoMes.rotuloMes}</span>
+            ${btnAtual}
+          </span>
           <span class="period-nav-sub">Navegue entre os meses fechados</span>
         </div>
         <button type="button" class="period-nav-btn" onclick="UIController.navegarCiclo(1)" ${infoMes.ehMesAtual ? 'disabled' : ''} title="Próximo mês">▶</button>
@@ -651,23 +684,53 @@ const UIController = {
     el.style.display = 'block';
 
     if (lucroAnterior <= 0) {
-      el.innerHTML = `<span style="color:var(--uber-muted);">📊 Sem registros em <b>${rotuloAnterior}</b> para comparar.</span>`;
+      el.innerHTML = `<span class="text-muted-sm">📊 Sem registros em <b>${rotuloAnterior}</b> para comparar.</span>`;
       return;
     }
 
     const diff = lucroAtual - lucroAnterior;
     const pct = Math.round((diff / lucroAnterior) * 100);
     const sinal = diff >= 0 ? '+' : '-';
-    const cor = diff >= 0 ? 'var(--uber-green)' : 'var(--uber-yellow)';
+    const classeCor = diff >= 0 ? 'text-green' : 'text-yellow';
     const icone = diff >= 0 ? '🟢' : '🟡';
 
     el.innerHTML = `
-      ${icone} <span style="color:${cor};">${sinal}R$ ${Math.abs(diff).toFixed(2)} (${diff >= 0 ? '+' : ''}${pct}%)</span>
-      <span style="color:var(--uber-muted);">vs. ${rotuloAnterior} (R$ ${lucroAnterior.toFixed(2)})</span>
+      ${icone} <span class="${classeCor}">${sinal}${FinanceEngine.moeda(Math.abs(diff))} (${diff >= 0 ? '+' : ''}${pct}%)</span>
+      <span class="text-muted-sm">vs. ${rotuloAnterior} (${FinanceEngine.moeda(lucroAnterior)})</span>
     `;
   },
 
-  renderizarMetaSemanal(turnos, infoSemanaSelecionada) {
+  renderizarCardMetaUnificada(turnos, lucroHoje, metaDiaria, infoSemanaSelecionada) {
+    const btnDia = document.getElementById('btnAbaMetaDia');
+    const btnSem = document.getElementById('btnAbaMetaSemana');
+    const btnEditar = document.getElementById('btnEditarMetaUnificada');
+    const txtInfo = document.getElementById('txtMetaUnificadaInfo');
+    const barra = document.getElementById('barraMetaUnificadaFill');
+    const txtRitmo = document.getElementById('txtMetaUnificadaRitmo');
+    if (!btnDia || !btnSem || !txtInfo || !barra || !txtRitmo) return;
+
+    const modoSemana = this.abaMetaAtiva === 'semana';
+    btnDia.classList.toggle('active', !modoSemana);
+    btnSem.classList.toggle('active', modoSemana);
+    btnEditar.textContent = modoSemana ? 'Editar semana' : 'Editar dia';
+
+    if (!modoSemana) {
+      const pctDia = metaDiaria > 0 ? Math.min(100, Math.max(0, (lucroHoje / metaDiaria) * 100)) : 0;
+      const faltaDia = Math.max(0, metaDiaria - lucroHoje);
+      const bateuDia = lucroHoje >= metaDiaria && metaDiaria > 0;
+
+      barra.className = 'goal-fill';
+      barra.style.width = `${pctDia}%`;
+
+      txtInfo.innerHTML = bateuDia
+        ? `🏆 Meta de Hoje Batida! <strong>${FinanceEngine.moeda(lucroHoje)} / ${FinanceEngine.moeda(metaDiaria)}</strong>`
+        : `🎯 Meta Hoje: <strong>${FinanceEngine.moeda(metaDiaria)}</strong> <span class="text-muted-sm">(Falta ${FinanceEngine.moeda(faltaDia)})</span>`;
+
+      txtRitmo.innerHTML = this.obterTextoPrevisaoMetaDiaria(turnos, faltaDia, bateuDia);
+      return;
+    }
+
+    // Modo Meta da Semana (Segunda a Domingo)
     const infoSem = this.periodoAtual === '7dias'
       ? infoSemanaSelecionada
       : CalendarEngine.obterSemanaPorOffset(0);
@@ -679,35 +742,60 @@ const UIController = {
     const lucroSem = resumoSemana.somaLucro;
     const diasRodados = resumoSemana.diasTrabalhados;
     const pctSem = metaSemanal > 0 ? Math.min(100, Math.max(0, (lucroSem / metaSemanal) * 100)) : 0;
-
-    const barra = document.getElementById('barraMetaSemanalFill');
-    const txtInfo = document.getElementById('txtMetaSemanalInfo');
-    const txtRitmo = document.getElementById('txtMetaSemanalRitmo');
-    if (!barra || !txtInfo || !txtRitmo) return;
-
-    barra.style.width = `${pctSem}%`;
-    barra.classList.toggle('hit', lucroSem >= metaSemanal && metaSemanal > 0);
-
+    const bateuSem = lucroSem >= metaSemanal && metaSemanal > 0;
     const faltaSem = Math.max(0, metaSemanal - lucroSem);
 
-    txtInfo.innerHTML = lucroSem >= metaSemanal
-      ? `🏆 Semana ${infoSem.numStr} Batida! <strong>R$ ${lucroSem.toFixed(0)} / R$ ${metaSemanal.toFixed(0)}</strong> <span class="status-badge status-good" style="margin-left:4px;">${diasRodados}d rodados</span>`
-      : `📅 Meta Semana ${infoSem.numStr}: <strong>R$ ${lucroSem.toFixed(0)} / R$ ${metaSemanal.toFixed(0)}</strong> <span style="color:var(--uber-muted); font-size:0.75rem;">(${diasRodados}d rodados)</span>`;
+    barra.className = `goal-fill weekly ${bateuSem ? 'hit' : ''}`;
+    barra.style.width = `${pctSem}%`;
 
-    if (lucroSem >= metaSemanal) {
-      txtRitmo.innerHTML = `🔥 <b>Meta da Semana ${infoSem.numStr} concluída!</b> Lucro excedente: +R$ ${(lucroSem - metaSemanal).toFixed(2)}.`;
-      return;
-    }
+    txtInfo.innerHTML = bateuSem
+      ? `🏆 Semana ${infoSem.numStr} Batida! <strong>${FinanceEngine.moedaCurta(lucroSem)} / ${FinanceEngine.moedaCurta(metaSemanal)}</strong> <span class="status-badge status-good">${diasRodados}d rodados</span>`
+      : `📅 Semana ${infoSem.numStr}: <strong>${FinanceEngine.moedaCurta(lucroSem)} / ${FinanceEngine.moedaCurta(metaSemanal)}</strong> <span class="text-muted-sm">(${diasRodados}d rodados)</span>`;
 
-    if (infoSem.ehSemanaAtual) {
+    if (bateuSem) {
+      txtRitmo.innerHTML = `🔥 <b>Meta da Semana ${infoSem.numStr} concluída!</b> Lucro excedente: +${FinanceEngine.moeda(lucroSem - metaSemanal)}.`;
+    } else if (infoSem.ehSemanaAtual) {
       const hoje = new Date();
-      const diaISO = hoje.getDay() === 0 ? 7 : hoje.getDay(); // Seg=1 .. Dom=7
+      const diaISO = hoje.getDay() === 0 ? 7 : hoje.getDay();
       const diasRestantesAteDom = Math.max(1, 7 - diaISO + 1);
       const porDiaRestante = faltaSem / diasRestantesAteDom;
-      txtRitmo.innerHTML = `Faltam <b>R$ ${faltaSem.toFixed(2)}</b> na Semana ${infoSem.numStr} (~<b>R$ ${porDiaRestante.toFixed(0)}/dia</b> nos ${diasRestantesAteDom} dia(s) até domingo).`;
+      txtRitmo.innerHTML = `Faltam <b>${FinanceEngine.moeda(faltaSem)}</b> na Semana ${infoSem.numStr} (~<b>${FinanceEngine.moedaCurta(porDiaRestante)}/dia</b> nos ${diasRestantesAteDom} dia(s) até domingo).`;
     } else {
-      txtRitmo.innerHTML = `Semana ${infoSem.numStr} (${infoSem.intervaloCurto}): faltaram R$ ${faltaSem.toFixed(2)} para a meta semanal.`;
+      txtRitmo.innerHTML = `Semana ${infoSem.numStr} (${infoSem.intervaloCurto}): faltaram ${FinanceEngine.moeda(faltaSem)} para a meta semanal.`;
     }
+  },
+
+  obterTextoPrevisaoMetaDiaria(turnos, falta, bateuMeta) {
+    if (bateuMeta) {
+      return `🔥 <b>Parabéns!</b> Tudo o que você rodar hoje agora é lucro extra acima da meta diária.`;
+    }
+    if (turnos.length === 0) {
+      return 'Salve seu primeiro turno para ver a previsão de horas e corridas para bater a meta.';
+    }
+
+    let totLucro = 0, totHoras = 0, totCorridas = 0;
+    turnos.slice(0, 14).forEach(t => {
+      totLucro += parseFloat(t.lucroLiquido) || 0;
+      totHoras += parseFloat(t.horas) || 0;
+      totCorridas += parseInt(t.corridas) || 0;
+    });
+
+    const liqPorHora = totHoras > 0 ? (totLucro / totHoras) : 0;
+    const liqPorCorrida = totCorridas > 0 ? (totLucro / totCorridas) : 0;
+
+    const partes = [];
+    if (liqPorHora > 0) {
+      const horasRestantes = falta / liqPorHora;
+      partes.push(`~<b>${this.formatarDuracaoMs(horasRestantes * 3600000)}</b> de pista`);
+    }
+    if (liqPorCorrida > 0) {
+      const corridasRestantes = Math.max(1, Math.ceil(falta / liqPorCorrida));
+      partes.push(`~<b>${corridasRestantes} corrida${corridasRestantes === 1 ? '' : 's'}</b>`);
+    }
+
+    return partes.length > 0
+      ? `⚡ No seu ritmo médio: faltam ${partes.join(' ou ')} para bater a meta de hoje.`
+      : `Continue registrando horas e corridas para calcular seu ritmo automático.`;
   },
 
   async editarMetaSemanal() {
@@ -787,8 +875,8 @@ const UIController = {
     const pior = ordenados[ordenados.length - 1];
 
     const formatarResumoDia = d => {
-      const partes = [`Média: <b>R$ ${d.mediaDia.toFixed(0)}/dia</b>`];
-      if (d.mediaHora > 0) partes.push(`<b>R$ ${d.mediaHora.toFixed(0)}/h</b>`);
+      const partes = [`Média: <b>${FinanceEngine.moedaCurta(d.mediaDia)}/dia</b>`];
+      if (d.mediaHora > 0) partes.push(`<b>${FinanceEngine.moedaCurta(d.mediaHora)}/h</b>`);
       return partes.join(' • ');
     };
 
@@ -796,8 +884,8 @@ const UIController = {
 
     if (ativos.length === 1) {
       container.innerHTML = `
-        <div class="weekday-box" style="border-color:rgba(6,193,103,0.35);">
-          <span class="weekday-box-tag" style="color:var(--uber-green);">🔥 Inteligência da Semana</span>
+        <div class="weekday-box highlight-green">
+          <span class="weekday-box-tag text-green">🔥 Inteligência da Semana</span>
           <div class="weekday-box-day">${melhor.nome}</div>
           <div class="weekday-box-meta">
             ${formatarResumoDia(melhor)} • Salve turnos em outros dias da semana para descobrir o melhor dia p/ folga.
@@ -809,13 +897,13 @@ const UIController = {
 
     container.innerHTML = `
       <div class="weekday-insight-grid">
-        <div class="weekday-box" style="border-color:rgba(6,193,103,0.4);">
-          <span class="weekday-box-tag" style="color:var(--uber-green);">🔥 Melhor p/ Rodar</span>
+        <div class="weekday-box highlight-green">
+          <span class="weekday-box-tag text-green">🔥 Melhor p/ Rodar</span>
           <div class="weekday-box-day">${melhor.nome}</div>
           <div class="weekday-box-meta">${formatarResumoDia(melhor)}</div>
         </div>
         <div class="weekday-box">
-          <span class="weekday-box-tag" style="color:var(--uber-yellow);">🛠️ Ideal p/ Folga</span>
+          <span class="weekday-box-tag text-yellow">🛠️ Ideal p/ Folga</span>
           <div class="weekday-box-day">${pior.nome}</div>
           <div class="weekday-box-meta">${formatarResumoDia(pior)}</div>
         </div>
@@ -823,60 +911,24 @@ const UIController = {
     `;
   },
 
-  renderizarPrevisaoMeta(turnos, falta, bateuMeta) {
-    const elRitmo = document.getElementById('txtMetaRitmo');
-    if (!elRitmo) return;
-    if (bateuMeta) {
-      elRitmo.innerHTML = `🔥 <b>Parabéns!</b> Tudo o que você rodar hoje agora é lucro extra acima da meta diária.`;
-      return;
-    }
-    if (turnos.length === 0) {
-      elRitmo.textContent = 'Salve seu primeiro turno para ver a previsão de horas e corridas para bater a meta.';
-      return;
-    }
-
-    let totLucro = 0, totHoras = 0, totCorridas = 0;
-    turnos.slice(0, 14).forEach(t => {
-      totLucro += parseFloat(t.lucroLiquido) || 0;
-      totHoras += parseFloat(t.horas) || 0;
-      totCorridas += parseInt(t.corridas) || 0;
-    });
-
-    const liqPorHora = totHoras > 0 ? (totLucro / totHoras) : 0;
-    const liqPorCorrida = totCorridas > 0 ? (totLucro / totCorridas) : 0;
-
-    const partes = [];
-    if (liqPorHora > 0) {
-      const horasRestantes = falta / liqPorHora;
-      partes.push(`~<b>${this.formatarDuracaoMs(horasRestantes * 3600000)}</b> de pista`);
-    }
-    if (liqPorCorrida > 0) {
-      const corridasRestantes = Math.max(1, Math.ceil(falta / liqPorCorrida));
-      partes.push(`~<b>${corridasRestantes} corrida${corridasRestantes === 1 ? '' : 's'}</b>`);
-    }
-
-    elRitmo.innerHTML = partes.length > 0
-      ? `⚡ No seu ritmo médio: faltam ${partes.join(' ou ')} para bater a meta de hoje.`
-      : `Continue registrando horas e corridas para calcular seu ritmo automático.`;
-  },
-
   renderizarGrafico7Dias(turnos, meta, infoSemanaSelecionada) {
     const container = document.getElementById('grafico7Dias');
+    const detalheEl = document.getElementById('detalheBarraGrafico');
     if (!container) return;
 
     const hojeStr = new Date().toLocaleDateString('pt-BR');
     let dias = [];
 
-    // Quando estiver na aba "Semana", exibe de Segunda a Domingo daquela Semana do Ano (#1)
     if (this.periodoAtual === '7dias' && infoSemanaSelecionada) {
       dias = infoSemanaSelecionada.diasDaSemana.map(d => {
-        const somaDia = turnos
-          .filter(t => t.data === d.dataBR)
-          .reduce((acc, t) => acc + (parseFloat(t.lucroLiquido) || 0), 0);
-
+        const turnosDia = turnos.filter(t => t.data === d.dataBR);
+        const resumoDia = FinanceEngine.resumirLista(turnosDia);
         return {
           rotulo: d.rotulo,
-          valor: somaDia,
+          dataCompleta: `${d.rotulo}, ${d.diaMes}`,
+          valor: resumoDia.somaLucro,
+          km: resumoDia.somaKm,
+          horas: resumoDia.somaHoras,
           ehHoje: d.dataBR === hojeStr
         };
       });
@@ -887,21 +939,36 @@ const UIController = {
       for (let i = 6; i >= 0; i--) {
         const d = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - i);
         const dataBR = d.toLocaleDateString('pt-BR');
-        const somaDia = turnos
-          .filter(t => t.data === dataBR)
-          .reduce((acc, t) => acc + (parseFloat(t.lucroLiquido) || 0), 0);
+        const turnosDia = turnos.filter(t => t.data === dataBR);
+        const resumoDia = FinanceEngine.resumirLista(turnosDia);
+        const diaMes = CalendarEngine.formatarDiaMesCurto(d);
 
         dias.push({
           rotulo: i === 0 ? 'Hoje' : nomesDias[d.getDay()],
-          valor: somaDia,
+          dataCompleta: `${nomesDias[d.getDay()]}, ${diaMes}`,
+          valor: resumoDia.somaLucro,
+          km: resumoDia.somaKm,
+          horas: resumoDia.somaHoras,
           ehHoje: i === 0
         });
       }
     }
 
+    this.ultimosDiasGrafico = dias;
+
     const maxVal = Math.max(meta || 200, ...dias.map(d => d.valor), 50);
 
-    container.innerHTML = dias.map(d => {
+    // Posição vertical da linha tracejada de Meta dentro da área de barras (64px de altura, a 20px da base)
+    const pctMeta = meta > 0 ? Math.min(100, Math.max(10, Math.round((meta / maxVal) * 100))) : 0;
+    const bottomPx = Math.round(20 + (pctMeta / 100) * 64);
+
+    const linhaMetaHTML = meta > 0
+      ? `<div class="chart-goal-line" style="bottom:${bottomPx}px;">
+           <span class="chart-goal-tag">Meta ${FinanceEngine.moedaCurta(meta)}</span>
+         </div>`
+      : '';
+
+    const colunasHTML = dias.map((d, idx) => {
       const alturaPct = d.valor > 0 ? Math.max(8, Math.min(100, Math.round((d.valor / maxVal) * 100))) : 4;
       const classesBarra = [
         'chart-bar',
@@ -909,17 +976,46 @@ const UIController = {
         d.valor >= meta && meta > 0 ? 'hit-goal' : ''
       ].filter(Boolean).join(' ');
 
+      const selecionado = this.indiceBarraSelecionada === idx;
       const txtVal = d.valor > 0 ? `R$${Math.round(d.valor)}` : '—';
+
       return `
-        <div class="chart-col">
+        <div class="chart-col ${selecionado ? 'selected' : ''}" onclick="UIController.selecionarBarraGrafico(${idx})">
           <span class="chart-val">${txtVal}</span>
           <div class="chart-bar-wrap">
             <div class="${classesBarra}" style="height:${alturaPct}%"></div>
           </div>
-          <span class="chart-day" style="${d.ehHoje ? 'color:var(--uber-white);' : ''}">${d.rotulo}</span>
+          <span class="chart-day ${d.ehHoje ? 'today-label' : ''}">${d.rotulo}</span>
         </div>
       `;
     }).join('');
+
+    container.innerHTML = linhaMetaHTML + colunasHTML;
+
+    if (detalheEl) {
+      if (this.indiceBarraSelecionada !== null && dias[this.indiceBarraSelecionada]) {
+        const sel = dias[this.indiceBarraSelecionada];
+        detalheEl.classList.add('visible');
+        detalheEl.innerHTML = `
+          <span>📅 <b class="text-white">${sel.dataCompleta}</b></span>
+          <span>
+            Líq: <b class="text-green">${FinanceEngine.moeda(sel.valor)}</b>
+            ${sel.km > 0 ? ` • ${sel.km.toFixed(0)} km` : ''}
+            ${sel.horas > 0 ? ` • ${sel.horas.toFixed(1)}h` : ''}
+          </span>
+        `;
+      } else {
+        detalheEl.classList.remove('visible');
+      }
+    }
+  },
+
+  selecionarBarraGrafico(idx) {
+    this.indiceBarraSelecionada = this.indiceBarraSelecionada === idx ? null : idx;
+    const turnos = StorageService.obterTurnos();
+    const metaDiaria = StorageService.obterNumero(KEYS.META_DIARIA, DEFAULTS.META_DIARIA);
+    const infoSem = CalendarEngine.obterSemanaPorOffset(this.offsetSemana);
+    this.renderizarGrafico7Dias(turnos, metaDiaria, infoSem);
   },
 
   /* ==========================================================================
@@ -942,11 +1038,11 @@ const UIController = {
       if (faltaKm <= 0) {
         badge.className = 'status-badge status-bad';
         badge.textContent = '🛢️ Trocar Óleo!';
-        linhasInfo.push(`⚠️ <b style="color:var(--uber-red)">Troca de óleo vencida há ${Math.abs(faltaKm)} km!</b> (Meta: ${kmProxOleo} km)`);
+        linhasInfo.push(`⚠️ <b class="text-red">Troca de óleo vencida há ${Math.abs(faltaKm)} km!</b> (Meta: ${kmProxOleo} km)`);
       } else if (faltaKm <= 600) {
         badge.className = 'status-badge status-warn';
         badge.textContent = `🛢️ Óleo: ${faltaKm} km`;
-        linhasInfo.push(`🔔 Faltam <b style="color:var(--uber-yellow)">${faltaKm} km</b> para a troca de óleo (${kmProxOleo} km).`);
+        linhasInfo.push(`🔔 Faltam <b class="text-yellow">${faltaKm} km</b> para a troca de óleo (${kmProxOleo} km).`);
       } else {
         badge.className = 'status-badge status-good';
         badge.textContent = `🛢️ Óleo: ${faltaKm} km`;
@@ -962,11 +1058,11 @@ const UIController = {
     }
 
     if (custoFixoMes > 0) {
-      const custoDia = (custoFixoMes / 26).toFixed(2);
-      linhasInfo.push(`📅 Custo fixo: <b>R$ ${custoFixoMes.toFixed(0)}/mês</b> (~<b>R$ ${custoDia}/dia</b> p/ 26 dias).`);
+      const custoDia = custoFixoMes / 26;
+      linhasInfo.push(`📅 Custo fixo: <b>${FinanceEngine.moedaCurta(custoFixoMes)}/mês</b> (~<b>${FinanceEngine.moeda(custoDia)}/dia</b> p/ 26 dias).`);
       const campoDiaria = document.getElementById('diariaCarro');
       if (campoDiaria && !campoDiaria.value) {
-        campoDiaria.placeholder = `Sugerido: ${custoDia}`;
+        campoDiaria.placeholder = `Sugerido: ${custoDia.toFixed(2)}`;
       }
     }
 
@@ -1007,14 +1103,14 @@ const UIController = {
     }
 
     out.innerHTML = `
-      <div style="padding:10px; border-radius:10px; background:var(--uber-surface-elevated); border-left:4px solid ${cor}; margin-top:4px;">
+      <div class="sim-verdict-box" style="border-left-color:${cor};">
         <div style="color:${cor}; font-size:0.88rem; margin-bottom:4px;">${veredito}</div>
-        <div style="color:var(--uber-white); font-weight:700;">
-          Lucro Livre: R$ ${lucroCorrida.toFixed(2)} • Líq: R$ ${reaisPorKmLiq.toFixed(2)}/km
-          ${min > 0 ? ` • R$ ${ganhoHoraLiq.toFixed(0)}/h` : ''}
+        <div class="text-white" style="font-weight:700;">
+          Lucro Livre: ${FinanceEngine.moeda(lucroCorrida)} • Líq: ${FinanceEngine.moeda(reaisPorKmLiq)}/km
+          ${min > 0 ? ` • ${FinanceEngine.moedaCurta(ganhoHoraLiq)}/h` : ''}
         </div>
-        <div style="font-size:0.74rem; color:var(--uber-muted); margin-top:2px;">
-          Bruto: R$ ${reaisPorKmBruto.toFixed(2)}/km • Custo estimado da corrida: R$ ${custoTotalCorrida.toFixed(2)}
+        <div class="text-muted-sm" style="margin-top:2px;">
+          Bruto: ${FinanceEngine.moeda(reaisPorKmBruto)}/km • Custo estimado da corrida: ${FinanceEngine.moeda(custoTotalCorrida)}
         </div>
       </div>
     `;
@@ -1068,7 +1164,7 @@ const UIController = {
       const diaria = (novoValor / 26).toFixed(2);
       document.getElementById('diariaCarro').value = diaria;
       Rascunho.salvar();
-      this.notificar(`Custo fixo diário (R$ ${diaria}/dia) preenchido!`);
+      this.notificar(`Custo fixo diário (${FinanceEngine.moeda(diaria)}/dia) preenchido!`);
     } else {
       this.notificar('Custo fixo mensal zerado.');
     }
@@ -1121,17 +1217,15 @@ const UIController = {
     if (turnos.length === 0) {
       if (selectFiltro) selectFiltro.style.display = 'none';
       container.innerHTML = `
-        <div style="text-align:center; padding:28px 12px; color:var(--uber-muted); font-size:0.86rem;">
+        <div class="empty-state">
           Nenhum turno salvo ainda. Inicie ou feche seu dia para ver suas estatísticas!
         </div>
       `;
       return;
     }
 
-    // Agrupa todos os turnos por Semana do Ano ISO para popular o filtro rápido (#6)
     const todosGruposSemana = CalendarEngine.agruparTurnosPorSemana(turnos);
 
-    // Também coleta os meses disponíveis
     const mapaMeses = new Map();
     turnos.forEach(t => {
       const dt = this.parseData(t);
@@ -1153,13 +1247,13 @@ const UIController = {
       selectFiltro.style.display = 'block';
       const opcoesSemana = todosGruposSemana.map(g =>
         `<option value="SEM:${g.chaveSemana}" ${this.filtroHistorico === `SEM:${g.chaveSemana}` ? 'selected' : ''}>` +
-        `📅 Semana ${g.numStr}/${g.anoISO} (${g.intervaloCurto}) — Líq: R$ ${g.somaLucro.toFixed(0)} (${g.turnos.length}t)` +
+        `📅 Semana ${g.numStr}/${g.anoISO} (${g.intervaloCurto}) — Líq: ${FinanceEngine.moedaCurta(g.somaLucro)} (${g.turnos.length}t)` +
         `</option>`
       ).join('');
 
       const opcoesMes = Array.from(mapaMeses.values()).map(m =>
         `<option value="${m.chave}" ${this.filtroHistorico === m.chave ? 'selected' : ''}>` +
-        `🗓️ Mês: ${m.rotulo} — Líq: R$ ${m.lucro.toFixed(0)} (${m.qtd}t)` +
+        `🗓️ Mês: ${m.rotulo} — Líq: ${FinanceEngine.moedaCurta(m.lucro)} (${m.qtd}t)` +
         `</option>`
       ).join('');
 
@@ -1174,7 +1268,6 @@ const UIController = {
       `;
     }
 
-    // Filtra turnos conforme a seleção (#6)
     const turnosFiltrados = turnos.filter(t => {
       if (!this.filtroHistorico || this.filtroHistorico === 'todos') return true;
       const dt = this.parseData(t);
@@ -1205,47 +1298,44 @@ const UIController = {
         const outrNum = Number(item.outrosGastos || 0);
         const manutNum = Number(item.provisaoManut || 0);
 
-        const fat = item.faturamento !== undefined ? `Bruto: R$ ${fatNum.toFixed(2)}` : '';
-        const cus = item.custosTotais !== undefined ? `Custos: R$ ${cusNum.toFixed(2)}` : '';
-        const hrs = item.horas ? `${item.horas}h (R$ ${item.liquidoHora}/h)` : '';
+        const fat = item.faturamento !== undefined ? `Bruto: ${FinanceEngine.moeda(fatNum)}` : '';
+        const cus = item.custosTotais !== undefined ? `Custos: ${FinanceEngine.moeda(cusNum)}` : '';
+        const hrs = item.horas ? `${item.horas}h (${FinanceEngine.moeda(item.liquidoHora)}/h)` : '';
 
         const textoOdometro = (item.kmInicial > 0 && item.kmFinal > 0)
           ? `${item.kmInicial} → ${item.kmFinal} km (${item.kmTotal} km)`
           : `${item.kmTotal} km rodados`;
 
         const textoCorridas = item.corridas > 0
-          ? `${item.corridas} (${item.ticketMedio ? `R$ ${item.ticketMedio}/corr.` : ''})`
+          ? `${item.corridas} (${item.ticketMedio ? `${FinanceEngine.moeda(item.ticketMedio)}/corr.` : ''})`
           : 'Não informado';
 
         return `
           <div id="card-turno-${item.id}" class="activity-item" onclick="UIController.toggleDetalhesTurno('${item.id}')">
             <div class="act-header">
               <span class="act-title">${item.data} (${diaSem}) • ${item.kmTotal} km</span>
-              <div style="display:flex; align-items:center; gap:6px;" onclick="event.stopPropagation()">
-                <span class="act-net">R$ ${item.lucroLiquido}</span>
-                <button class="chip-btn" style="padding:3px 7px;" onclick="UIController.compartilharTurnoId('${item.id}')" title="Copiar p/ WhatsApp">📲</button>
-                <button class="chip-btn" style="padding:3px 7px;" onclick="UIController.editarTurno('${item.id}')" title="Editar turno">✎</button>
-                <button class="chip-btn" style="padding:3px 7px;" onclick="UIController.excluirTurno('${item.id}')" title="Excluir">✕</button>
+              <div class="act-header-right">
+                <span class="act-net">${FinanceEngine.moeda(item.lucroLiquido)}</span>
+                <span id="hint-turno-${item.id}" class="act-toggle-hint">▾ Raio-X</span>
               </div>
             </div>
             <div class="act-meta">
               ${fat ? `<span>${fat}</span>` : ''}
               ${cus ? `<span>• ${cus}</span>` : ''}
-              <span>• R$ ${item.liquidoKm}/km</span>
+              <span>• ${FinanceEngine.moeda(item.liquidoKm)}/km</span>
               ${hrs ? `<span>• ${hrs}</span>` : ''}
-              <span id="hint-turno-${item.id}" class="act-toggle-hint">▾ Raio-X</span>
             </div>
 
             <div class="act-details-panel" onclick="event.stopPropagation()">
               <div class="act-detail-section-title">🛣️ Operação e Eficiência</div>
-              <div style="background:var(--uber-black); border:1px solid var(--uber-border); border-radius:var(--radius-sm); padding:8px 10px;">
+              <div class="detail-box">
                 <div class="act-detail-row">
                   <span>Odômetro</span>
                   <span>${textoOdometro}</span>
                 </div>
                 <div class="act-detail-row">
                   <span>Horas líquidas na pista</span>
-                  <span>${item.horas > 0 ? `${item.horas}h (R$ ${item.liquidoHora}/h)` : 'Não informado'}</span>
+                  <span>${item.horas > 0 ? `${item.horas}h (${FinanceEngine.moeda(item.liquidoHora)}/h)` : 'Não informado'}</span>
                 </div>
                 <div class="act-detail-row">
                   <span>Viagens / Ticket médio</span>
@@ -1253,32 +1343,45 @@ const UIController = {
                 </div>
                 <div class="act-detail-row">
                   <span>Ganho Bruto vs. Líquido / KM</span>
-                  <span>R$ ${item.brutoKm || '0.00'}/km → <b style="color:var(--uber-green)">R$ ${item.liquidoKm}/km</b></span>
+                  <span>${FinanceEngine.moeda(item.brutoKm || 0)}/km → <b class="text-green">${FinanceEngine.moeda(item.liquidoKm)}/km</b></span>
                 </div>
               </div>
 
-              <div class="act-detail-section-title">💸 Raio-X dos Custos (Total: R$ ${cusNum.toFixed(2)})</div>
-              <div style="background:var(--uber-black); border:1px solid var(--uber-border); border-radius:var(--radius-sm); padding:8px 10px;">
+              <div class="act-detail-section-title">💸 Raio-X dos Custos (Total: ${FinanceEngine.moeda(cusNum)})</div>
+              <div class="detail-box">
                 <div class="act-detail-row">
                   <span>⛽ Combustível</span>
-                  <span>R$ ${combNum.toFixed(2)}</span>
+                  <span>${FinanceEngine.moeda(combNum)}</span>
                 </div>
                 <div class="act-detail-row">
                   <span>🛠️ Reserva de Manutenção (KM)</span>
-                  <span>R$ ${manutNum.toFixed(2)}</span>
+                  <span>${FinanceEngine.moeda(manutNum)}</span>
                 </div>
                 <div class="act-detail-row">
                   <span>🍽️ Alimentação / Água</span>
-                  <span>R$ ${alimNum.toFixed(2)}</span>
+                  <span>${FinanceEngine.moeda(alimNum)}</span>
                 </div>
                 <div class="act-detail-row">
                   <span>🚗 Diária / Aluguel / Fixo</span>
-                  <span>R$ ${diarNum.toFixed(2)}</span>
+                  <span>${FinanceEngine.moeda(diarNum)}</span>
                 </div>
                 <div class="act-detail-row">
                   <span>📦 Outros (Pedágio, Lavagem...)</span>
-                  <span>R$ ${outrNum.toFixed(2)}</span>
+                  <span>${FinanceEngine.moeda(outrNum)}</span>
                 </div>
+              </div>
+
+              <!-- Barra Padronizada e Ergonômica de 3 Ações -->
+              <div class="act-actions-bar">
+                <button type="button" class="act-action-btn" onclick="UIController.compartilharTurnoId('${item.id}')">
+                  📲 WhatsApp
+                </button>
+                <button type="button" class="act-action-btn" onclick="UIController.editarTurno('${item.id}')">
+                  ✏️ Editar
+                </button>
+                <button type="button" class="act-action-btn danger" onclick="UIController.excluirTurno('${item.id}')">
+                  🗑️ Excluir
+                </button>
               </div>
             </div>
           </div>
@@ -1289,11 +1392,11 @@ const UIController = {
         <div class="week-group-header">
           <div>
             <div class="week-group-title">📅 Semana ${grupo.numStr}/${totalAno} (${grupo.anoISO}) • ${grupo.intervaloCurto}</div>
-            <div class="week-group-sub">${grupo.diasUnicos.size} dia(s) • Bruto: R$ ${grupo.somaBruto.toFixed(2)} • ${grupo.somaKm.toFixed(0)} km</div>
+            <div class="week-group-sub">${grupo.diasUnicos.size} dia(s) • Bruto: ${FinanceEngine.moeda(grupo.somaBruto)} • ${grupo.somaKm.toFixed(0)} km</div>
           </div>
           <div class="week-group-right">
-            <span class="week-group-net">R$ ${grupo.somaLucro.toFixed(2)}</span>
-            <button type="button" class="chip-btn" style="padding:4px 8px;" onclick="UIController.compartilharSemana('${grupo.chaveSemana}')" title="Copiar Resumo da Semana p/ WhatsApp">📲</button>
+            <span class="week-group-net">${FinanceEngine.moeda(grupo.somaLucro)}</span>
+            <button type="button" class="chip-btn" onclick="UIController.compartilharSemana('${grupo.chaveSemana}')" title="Copiar Resumo da Semana p/ WhatsApp">📲 Semana</button>
           </div>
         </div>
         ${cardsHTML}
@@ -1307,17 +1410,17 @@ const UIController = {
     const g = grupos.find(x => x.chaveSemana === chaveSemana);
     if (!g) return;
 
-    const liqKm = g.somaKm > 0 ? (g.somaLucro / g.somaKm).toFixed(2) : '0.00';
-    const liqHora = g.somaHoras > 0 ? (g.somaLucro / g.somaHoras).toFixed(2) : '0.00';
+    const liqKm = g.somaKm > 0 ? (g.somaLucro / g.somaKm) : 0;
+    const liqHora = g.somaHoras > 0 ? (g.somaLucro / g.somaHoras) : 0;
 
     const texto =
       `🖤 *FECHAMENTO SEMANA ${g.numStr}/${g.anoISO} (${g.intervaloCurto})*\n` +
       `🗓️ *Dias Rodados:* ${g.diasUnicos.size} dia(s) (${g.turnos.length} turnos)\n` +
-      `💰 *Faturamento Bruto:* R$ ${g.somaBruto.toFixed(2)}\n` +
-      `⛽ *Custos Totais:* R$ ${g.somaCustos.toFixed(2)}\n` +
-      `✅ *LUCRO LÍQUIDO LIVRE:* R$ ${g.somaLucro.toFixed(2)}\n` +
-      `🛣️ *KM Total:* ${g.somaKm.toFixed(0)} km (Líq: R$ ${liqKm}/km)` +
-      (g.somaHoras > 0 ? `\n⏱️ *Horas:* ${g.somaHoras.toFixed(1)}h (Líq: R$ ${liqHora}/h)` : '');
+      `💰 *Faturamento Bruto:* ${FinanceEngine.moeda(g.somaBruto)}\n` +
+      `⛽ *Custos Totais:* ${FinanceEngine.moeda(g.somaCustos)}\n` +
+      `✅ *LUCRO LÍQUIDO LIVRE:* ${FinanceEngine.moeda(g.somaLucro)}\n` +
+      `🛣️ *KM Total:* ${g.somaKm.toFixed(0)} km (Líq: ${FinanceEngine.moeda(liqKm)}/km)` +
+      (g.somaHoras > 0 ? `\n⏱️ *Horas:* ${g.somaHoras.toFixed(1)}h (Líq: ${FinanceEngine.moeda(liqHora)}/h)` : '');
 
     navigator.clipboard.writeText(texto).then(() => {
       this.notificar(`Resumo da Semana ${g.numStr} copiado p/ WhatsApp!`);
@@ -1329,11 +1432,11 @@ const UIController = {
     if (!reg) return;
     const texto =
       `🖤 *FECHAMENTO MEU TURNO (${reg.data})*\n` +
-      `💰 *Bruto:* R$ ${Number(reg.faturamento || 0).toFixed(2)}\n` +
-      `⛽ *Custos Totais:* R$ ${Number(reg.custosTotais || 0).toFixed(2)}\n` +
-      `✅ *LUCRO LÍQUIDO:* R$ ${reg.lucroLiquido}\n` +
-      `🛣️ *KM:* ${reg.kmTotal} km (Líq: R$ ${reg.liquidoKm}/km)` +
-      (reg.horas > 0 ? `\n⏱️ *Horas:* ${reg.horas}h (Líq: R$ ${reg.liquidoHora}/h)` : '');
+      `💰 *Bruto:* ${FinanceEngine.moeda(reg.faturamento || 0)}\n` +
+      `⛽ *Custos Totais:* ${FinanceEngine.moeda(reg.custosTotais || 0)}\n` +
+      `✅ *LUCRO LÍQUIDO:* ${FinanceEngine.moeda(reg.lucroLiquido)}\n` +
+      `🛣️ *KM:* ${reg.kmTotal} km (Líq: ${FinanceEngine.moeda(reg.liquidoKm)}/km)` +
+      (reg.horas > 0 ? `\n⏱️ *Horas:* ${reg.horas}h (Líq: ${FinanceEngine.moeda(reg.liquidoHora)}/h)` : '');
 
     navigator.clipboard.writeText(texto).then(() => {
       this.notificar(`Resumo de ${reg.data} copiado p/ WhatsApp!`);
@@ -1381,7 +1484,7 @@ const UIController = {
     const ok = await Sheet.confirmar({
       icone: '🗑️',
       titulo: 'Excluir este turno?',
-      subtitulo: `${alvo.data} • ${alvo.kmTotal} km • Lucro <b>R$ ${alvo.lucroLiquido}</b><br>Se errar, dá pra desfazer em <b>Pontos de restauração</b>.`,
+      subtitulo: `${alvo.data} • ${alvo.kmTotal} km • Lucro <b>${FinanceEngine.moeda(alvo.lucroLiquido)}</b><br>Se errar, dá pra desfazer em <b>Pontos de restauração</b>.`,
       textoOk: 'Excluir turno',
       variante: 'danger'
     });
@@ -1455,8 +1558,8 @@ const UIController = {
     if (lblTotal) lblTotal.textContent = `${turnos.length} registro(s)`;
 
     const textoUltimoBackup = infoBackup
-      ? `Último backup externo: <b style="color:#fff;">${infoBackup.dataFormatada}</b> (${infoBackup.qtdTurnos} turnos)`
-      : `<span style="color:var(--uber-yellow);">Você ainda não salvou um arquivo de backup externo.</span>`;
+      ? `Último backup externo: <b class="text-white">${infoBackup.dataFormatada}</b> (${infoBackup.qtdTurnos} turnos)`
+      : `<span class="text-yellow">Você ainda não salvou um arquivo de backup externo.</span>`;
 
     const elInfo = document.getElementById('infoSegurancaDados');
     if (elInfo) {
@@ -1472,12 +1575,12 @@ const UIController = {
       if (turnos.length > 0 && turnosSemBackup >= 5) {
         banner.style.display = 'block';
         banner.innerHTML = `
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
-            <div style="font-size:0.82rem;">
-              <strong style="color:var(--uber-yellow);">🛡️ Proteja seus ganhos</strong><br>
-              <span style="color:var(--uber-muted);">Você tem ${turnosSemBackup} turnos novos sem backup externo.</span>
+          <div class="banner-row">
+            <div>
+              <strong class="text-yellow">🛡️ Proteja seus ganhos</strong><br>
+              <span class="text-muted-sm">Você tem ${turnosSemBackup} turnos novos sem backup externo.</span>
             </div>
-            <button class="chip-btn" style="background:var(--uber-yellow); color:#000; border:none; padding:8px 12px;" onclick="UIController.exportarBackupJSON()">
+            <button type="button" class="chip-btn chip-warning" onclick="UIController.exportarBackupJSON()">
               Salvar Backup
             </button>
           </div>
@@ -1491,15 +1594,15 @@ const UIController = {
     if (!contPontos) return;
     const pontos = await Cofre.listarPontos();
     if (pontos.length === 0) {
-      contPontos.innerHTML = `<div style="font-size:0.78rem; color:var(--uber-muted);">Os pontos de restauração aparecem aqui automaticamente antes de qualquer exclusão.</div>`;
+      contPontos.innerHTML = `<div class="text-muted-sm">Os pontos de restauração aparecem aqui automaticamente antes de qualquer exclusão.</div>`;
       return;
     }
 
     contPontos.innerHTML = pontos.map(p => `
-      <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--uber-border); font-size:0.78rem;">
+      <div class="restore-point-row">
         <div>
-          <b style="color:#fff;">${p.motivo}</b><br>
-          <span style="color:var(--uber-muted);">${p.dataHora} • ${p.qtdTurnos} turno(s)</span>
+          <b class="text-white">${p.motivo}</b><br>
+          <span class="text-muted-sm">${p.dataHora} • ${p.qtdTurnos} turno(s)</span>
         </div>
         <button type="button" class="chip-btn" onclick="UIController.restaurarPonto(${p.id})">Restaurar</button>
       </div>

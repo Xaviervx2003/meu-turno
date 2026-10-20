@@ -13,7 +13,9 @@
   --uber-blue: #276EF1;
   --uber-blue-soft: rgba(39, 110, 241, 0.16);
   --uber-yellow: #FFC043;
+  --uber-yellow-soft: rgba(255, 192, 67, 0.12);
   --uber-red: #E11900;
+  --uber-red-soft: rgba(225, 25, 0, 0.16);
   --radius-lg: 16px;
   --radius-md: 12px;
   --radius-sm: 8px;
@@ -43,26 +45,43 @@ body {
   padding: 12px 16px 24px;
 }
 
+/* Classes Utilitárias de Tipografia e Cores Padronizadas */
+.text-helper {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--uber-muted);
+  margin-top: 8px;
+}
+.text-muted-sm {
+  font-size: 0.75rem;
+  color: var(--uber-muted);
+}
+.text-green { color: var(--uber-green); }
+.text-yellow { color: var(--uber-yellow); }
+.text-red { color: var(--uber-red); }
+.text-white { color: var(--uber-white); }
+
 /* ==========================================================================
-   2. TOP BAR & PÍLULA DE GANHOS (ESTILO MAPA UBER DRIVER)
+   2. TOP BAR SIMÉTRICA 3 COLUNAS & PÍLULA CENTRAL DE GANHOS
    ========================================================================== */
 .uber-topbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   padding: 6px 0 14px;
   position: sticky;
   top: 0;
-  background: rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0.92);
   backdrop-filter: blur(10px);
   z-index: 50;
 }
 
 .status-dot-wrap {
+  justify-self: start;
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 700;
   color: var(--uber-muted);
 }
@@ -72,6 +91,7 @@ body {
   height: 10px;
   border-radius: 50%;
   background: #545454;
+  flex-shrink: 0;
 }
 .status-dot.online {
   background: var(--uber-green);
@@ -83,25 +103,44 @@ body {
 }
 
 .earnings-pill {
+  justify-self: center;
   background: var(--uber-surface);
   border: 1px solid var(--uber-border);
-  padding: 8px 20px;
+  padding: 8px 18px;
   border-radius: var(--radius-pill);
   display: flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.65);
   cursor: pointer;
 }
 .earnings-pill span {
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   color: var(--uber-muted);
   font-weight: 700;
 }
 .earnings-pill strong {
-  font-size: 1.1rem;
+  font-size: 1.08rem;
   font-weight: 900;
   color: var(--uber-green);
+}
+
+.topbar-right {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.week-top-badge {
+  background: var(--uber-surface-elevated);
+  border: 1px solid var(--uber-border);
+  color: var(--uber-muted);
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
 }
 
 .btn-install-top {
@@ -110,8 +149,8 @@ body {
   color: var(--uber-black);
   border: none;
   border-radius: var(--radius-pill);
-  padding: 7px 12px;
-  font-size: 0.75rem;
+  padding: 6px 12px;
+  font-size: 0.74rem;
   font-weight: 800;
   cursor: pointer;
 }
@@ -133,7 +172,7 @@ body {
 }
 
 /* ==========================================================================
-   4. CARDS, SELETOR DE SEMANA DO ANO & COMPONENTES UBER BASE UI
+   4. CARDS, BANNERS, SELETOR DE SEMANA DO ANO & COMPONENTES UBER BASE UI
    ========================================================================== */
 .uber-card {
   background: var(--uber-surface);
@@ -143,11 +182,34 @@ body {
   margin-bottom: 14px;
 }
 
+.banner-card {
+  display: none;
+  padding: 12px 16px;
+}
+.banner-info {
+  border-color: var(--uber-blue);
+  background: var(--uber-blue-soft);
+}
+.banner-warning {
+  border-color: var(--uber-yellow);
+  background: var(--uber-yellow-soft);
+}
+.banner-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
 .card-header-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   margin-bottom: 14px;
+}
+.card-header-row.compact {
+  margin-bottom: 10px;
 }
 
 .card-title {
@@ -226,13 +288,16 @@ body {
   font-size: 0.84rem;
   font-weight: 900;
   color: var(--uber-white);
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 .period-nav-sub {
   font-size: 0.72rem;
   color: var(--uber-muted);
   display: block;
-  margin-top: 1px;
+  margin-top: 2px;
 }
 
 /* Hero de Lucro Líquido */
@@ -243,9 +308,10 @@ body {
   margin-bottom: 16px;
 }
 .hero-label {
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   color: var(--uber-muted);
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.3px;
 }
 .hero-amount {
   font-size: 2.3rem;
@@ -269,7 +335,7 @@ body {
 .period-comparison-badge {
   display: none;
   margin-top: 10px;
-  padding: 6px 10px;
+  padding: 7px 10px;
   border-radius: var(--radius-sm);
   font-size: 0.76rem;
   font-weight: 700;
@@ -297,65 +363,72 @@ body {
   margin-bottom: 4px;
 }
 .kpi-tile strong {
-  font-size: 1rem;
+  font-size: 0.98rem;
   font-weight: 800;
   color: var(--uber-white);
 }
 
-/* Barra de Meta Diária e Semanal */
-.goal-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-  font-size: 0.84rem;
-}
-.goal-track {
-  height: 8px;
-  background: var(--uber-surface-elevated);
-  border-radius: var(--radius-pill);
-  overflow: hidden;
-}
-.goal-fill {
-  height: 100%;
-  width: 0%;
-  background: var(--uber-green);
-  transition: width 0.3s ease;
-}
-.goal-fill.weekly {
-  background: var(--uber-blue);
-}
-.goal-fill.weekly.hit {
-  background: var(--uber-green);
-}
-.goal-divider {
+/* ==========================================================================
+   5. GRÁFICO DE 7 DIAS COM LINHA DE META E BARRA INTERATIVA
+   ========================================================================== */
+.chart-wrapper {
+  position: relative;
+  margin-top: 14px;
+  padding-top: 18px;
   border-top: 1px solid var(--uber-border);
-  margin: 14px 0 12px;
 }
-
-/* Gráfico Semanal Estilo Uber Driver */
 .uber-chart {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
   align-items: end;
-  height: 112px;
-  padding-top: 18px;
-  margin-top: 14px;
-  border-top: 1px solid var(--uber-border);
+  height: 104px;
+}
+.chart-goal-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed rgba(6, 193, 103, 0.55);
+  pointer-events: none;
+  z-index: 1;
+}
+.chart-goal-tag {
+  position: absolute;
+  right: 0;
+  top: -15px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: var(--uber-green);
+  background: rgba(0, 0, 0, 0.85);
+  padding: 1px 5px;
+  border-radius: 4px;
 }
 .chart-col {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
   height: 100%;
+  cursor: pointer;
+  padding: 2px 0;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s ease;
+}
+.chart-col.selected {
+  background: rgba(255, 255, 255, 0.06);
 }
 .chart-val {
-  font-size: 0.64rem;
+  font-size: 0.63rem;
   color: var(--uber-muted);
   font-weight: 700;
   margin-bottom: 4px;
+}
+.chart-col.selected .chart-val {
+  color: var(--uber-white);
+  font-weight: 900;
 }
 .chart-bar-wrap {
   width: 100%;
@@ -366,6 +439,10 @@ body {
   display: flex;
   align-items: flex-end;
   overflow: hidden;
+  position: relative;
+}
+.chart-col.selected .chart-bar-wrap {
+  outline: 1px solid rgba(255, 255, 255, 0.45);
 }
 .chart-bar {
   width: 100%;
@@ -389,9 +466,82 @@ body {
   margin-top: 5px;
   text-transform: uppercase;
 }
+.chart-day.today-label,
+.chart-col.selected .chart-day {
+  color: var(--uber-white);
+  font-weight: 900;
+}
+
+.chart-selected-detail {
+  display: none;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--uber-black);
+  border: 1px solid var(--uber-border);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  margin-top: 8px;
+  font-size: 0.76rem;
+  color: var(--uber-muted);
+}
+.chart-selected-detail.visible {
+  display: flex;
+}
 
 /* ==========================================================================
-   5. MODO TURNO AO VIVO (DIA A DIA NA PISTA)
+   6. CARD UNIFICADO DE METAS (HOJE | SEMANA)
+   ========================================================================== */
+.goal-header-tabs {
+  display: inline-flex;
+  background: var(--uber-surface-elevated);
+  border: 1px solid var(--uber-border);
+  border-radius: var(--radius-pill);
+  padding: 2px;
+}
+.goal-tab-btn {
+  background: transparent;
+  color: var(--uber-muted);
+  border: none;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 0.73rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.goal-tab-btn.active {
+  background: var(--uber-white);
+  color: var(--uber-black);
+}
+
+.goal-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 0.86rem;
+}
+.goal-track {
+  height: 9px;
+  background: var(--uber-surface-elevated);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.goal-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--uber-green);
+  transition: width 0.3s ease;
+}
+.goal-fill.weekly {
+  background: var(--uber-blue);
+}
+.goal-fill.weekly.hit {
+  background: var(--uber-green);
+}
+
+/* ==========================================================================
+   7. MODO TURNO AO VIVO (DIA A DIA NA PISTA)
    ========================================================================== */
 .live-shift-card {
   border: 1px solid var(--uber-border);
@@ -405,6 +555,18 @@ body {
 .live-shift-card.paused-shift {
   border-color: var(--uber-yellow);
   background: linear-gradient(180deg, rgba(255, 192, 67, 0.10) 0%, var(--uber-surface) 100%);
+}
+
+.live-shift-summary {
+  font-size: 0.83rem;
+  color: var(--uber-muted);
+  margin-bottom: 12px;
+}
+.live-shift-section-label {
+  font-size: 0.72rem;
+  color: var(--uber-muted);
+  text-transform: uppercase;
+  font-weight: 700;
 }
 
 .btn-uber-pause {
@@ -421,6 +583,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 8px;
+  margin-bottom: 10px;
 }
 .btn-uber-pause:active {
   transform: scale(0.99);
@@ -449,12 +612,12 @@ body {
 
 .btn-uber-primary {
   width: 100%;
-  min-height: 52px;
+  min-height: 50px;
   border-radius: var(--radius-md);
   border: none;
   background: var(--uber-white);
   color: var(--uber-black);
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 800;
   cursor: pointer;
 }
@@ -477,21 +640,34 @@ body {
   border: 1px solid var(--uber-border);
   border-radius: var(--radius-md);
   padding: 12px;
-  font-size: 0.85rem;
+  min-height: 48px;
+  font-size: 0.86rem;
   font-weight: 700;
   cursor: pointer;
   width: 100%;
+}
+.btn-uber-ghost.danger-outline {
+  margin-top: 12px;
+  color: var(--uber-red);
+  border-color: rgba(225, 25, 0, 0.35);
 }
 
 .chip-btn {
   background: var(--uber-surface-elevated);
   color: var(--uber-white);
   border: 1px solid var(--uber-border);
-  padding: 5px 10px;
+  padding: 6px 11px;
   border-radius: var(--radius-pill);
-  font-size: 0.72rem;
+  font-size: 0.73rem;
   font-weight: 700;
   cursor: pointer;
+  flex-shrink: 0;
+}
+.chip-btn.chip-warning {
+  background: var(--uber-yellow);
+  color: var(--uber-black);
+  border: none;
+  font-weight: 800;
 }
 
 /* Botões de Gasto Rápido na Rua */
@@ -499,7 +675,7 @@ body {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin: 12px 0;
+  margin: 10px 0;
 }
 .quick-exp-btn {
   background: var(--uber-surface-elevated);
@@ -517,19 +693,28 @@ body {
   font-size: 1.1rem;
   margin-bottom: 3px;
 }
+.quick-exp-btn small {
+  color: var(--uber-muted);
+  display: block;
+  margin-top: 2px;
+}
 
 /* ==========================================================================
-   6. FORMULÁRIOS E INPUTS (ALTO CONTRASTE VEICULAR)
+   8. FORMULÁRIOS E INPUTS (ALTO CONTRASTE VEICULAR)
    ========================================================================== */
 label {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   font-weight: 700;
   color: var(--uber-muted);
   margin-bottom: 6px;
   text-transform: uppercase;
+}
+.label-hint {
+  text-transform: none;
+  font-weight: 500;
 }
 
 input, select.uber-select {
@@ -546,7 +731,7 @@ input, select.uber-select {
   transition: border-color 0.15s;
 }
 select.uber-select {
-  font-size: 0.86rem;
+  font-size: 0.85rem;
   min-height: 44px;
   padding: 10px 12px;
   cursor: pointer;
@@ -583,9 +768,21 @@ input::placeholder {
 .collapsible-panel.open {
   display: block;
 }
+.collapsible-panel.panel-bottom {
+  margin-top: 10px;
+  margin-bottom: 0;
+}
+
+.sim-verdict-box {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--uber-surface-elevated);
+  border-left: 4px solid var(--uber-green);
+  margin-top: 4px;
+}
 
 /* ==========================================================================
-   7. RECIBO DE FECHAMENTO, AGRUPAMENTO SEMANAL & LISTA DE ATIVIDADES
+   9. RECIBO DE FECHAMENTO, AGRUPAMENTO SEMANAL & HISTÓRICO PADRONIZADO
    ========================================================================== */
 .receipt-box {
   display: none;
@@ -619,10 +816,13 @@ input::placeholder {
   border-radius: var(--radius-pill);
   font-size: 0.72rem;
   font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 .status-good { background: var(--uber-green-soft); color: var(--uber-green); }
-.status-warn { background: rgba(255, 192, 67, 0.16); color: var(--uber-yellow); }
-.status-bad  { background: rgba(225, 25, 0, 0.18); color: var(--uber-red); }
+.status-warn { background: var(--uber-yellow-soft); color: var(--uber-yellow); }
+.status-bad  { background: var(--uber-red-soft); color: var(--uber-red); }
 
 /* Cabeçalho Divisor de Semana do Ano no Histórico */
 .week-group-header {
@@ -659,7 +859,7 @@ input::placeholder {
   flex-shrink: 0;
 }
 .week-group-net {
-  font-size: 0.88rem;
+  font-size: 0.9rem;
   font-weight: 900;
   color: var(--uber-green);
 }
@@ -677,17 +877,24 @@ input::placeholder {
   background: #191919;
 }
 .activity-item.open {
-  border-color: #3d3d3d;
+  border-color: #454545;
 }
 .act-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   margin-bottom: 8px;
 }
 .act-title {
   font-weight: 800;
-  font-size: 0.95rem;
+  font-size: 0.94rem;
+}
+.act-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 .act-net {
   font-weight: 900;
@@ -698,20 +905,20 @@ input::placeholder {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 12px;
+  gap: 6px 10px;
   font-size: 0.78rem;
   color: var(--uber-muted);
 }
 .act-toggle-hint {
-  margin-left: auto;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 800;
   color: var(--uber-white);
   background: var(--uber-surface-elevated);
   border: 1px solid var(--uber-border);
-  padding: 2px 8px;
+  padding: 3px 9px;
   border-radius: var(--radius-pill);
 }
+
 .act-details-panel {
   display: none;
   margin-top: 12px;
@@ -728,16 +935,22 @@ input::placeholder {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--uber-muted);
-  margin: 8px 0 6px;
+  margin: 10px 0 6px;
 }
 .act-detail-section-title:first-child {
   margin-top: 0;
+}
+.detail-box {
+  background: var(--uber-black);
+  border: 1px solid var(--uber-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
 }
 .act-detail-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px 0;
+  padding: 5px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 .act-detail-row:last-child {
@@ -749,6 +962,55 @@ input::placeholder {
 .act-detail-row span:last-child {
   font-weight: 700;
   color: var(--uber-white);
+}
+
+/* Barra Padronizada de 3 Ações Ergonômicas dentro do Card de Histórico */
+.act-actions-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+.act-action-btn {
+  min-height: 40px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--uber-border);
+  background: var(--uber-surface-elevated);
+  color: var(--uber-white);
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+.act-action-btn:active {
+  transform: scale(0.98);
+}
+.act-action-btn.danger {
+  color: var(--uber-red);
+  border-color: rgba(225, 25, 0, 0.35);
+}
+
+.restore-point-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--uber-border);
+  font-size: 0.78rem;
+}
+.restore-point-row:last-child {
+  border-bottom: none;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 28px 12px;
+  color: var(--uber-muted);
+  font-size: 0.86rem;
 }
 
 /* Insight do Melhor e Pior Dia da Semana */
@@ -768,6 +1030,9 @@ input::placeholder {
   border: 1px solid var(--uber-border);
   border-radius: var(--radius-md);
   padding: 10px;
+}
+.weekday-box.highlight-green {
+  border-color: rgba(6, 193, 103, 0.4);
 }
 .weekday-box-tag {
   font-size: 0.66rem;
@@ -789,7 +1054,7 @@ input::placeholder {
 }
 
 /* ==========================================================================
-   8. BARRA DE NAVEGAÇÃO INFERIOR (ESTILO APP UBER DRIVER)
+   10. BARRA DE NAVEGAÇÃO INFERIOR (ESTILO APP UBER DRIVER)
    ========================================================================== */
 .bottom-nav {
   position: fixed;
@@ -833,7 +1098,7 @@ input::placeholder {
 }
 
 /* ==========================================================================
-   9. BOTTOM SHEET (ESTILO UBER — SUBSTITUI DIÁLOGOS DO NAVEGADOR)
+   11. BOTTOM SHEET (ESTILO UBER — SUBSTITUI DIÁLOGOS DO NAVEGADOR)
    ========================================================================== */
 body.sheet-aberto { overflow: hidden; }
 

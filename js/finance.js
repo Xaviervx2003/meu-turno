@@ -1,7 +1,39 @@
 /* ==========================================================================
-   MÓDULO 3: FINANCE ENGINE (REGRAS DE NEGÓCIO E FÓRMULAS PURAS)
+   MÓDULO 3: FINANCE ENGINE (REGRAS DE NEGÓCIO, FÓRMULAS & FORMATAÇÃO PT-BR)
    ========================================================================== */
 const FinanceEngine = {
+  /**
+   * Formata número no padrão monetário brasileiro: R$ 1.420,50
+   */
+  moeda(valor) {
+    const num = Number(valor) || 0;
+    const absFormatado = Math.abs(num).toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+    return num < 0 ? `-R$ ${absFormatado}` : `R$ ${absFormatado}`;
+  },
+
+  /**
+   * Formata número em moeda sem centavos para espaços compactos: R$ 1.420
+   */
+  moedaCurta(valor) {
+    const num = Math.round(Number(valor) || 0);
+    const absFormatado = Math.abs(num).toLocaleString('pt-BR');
+    return num < 0 ? `-R$ ${absFormatado}` : `R$ ${absFormatado}`;
+  },
+
+  /**
+   * Formata decimal com vírgula no padrão brasileiro: 1,45
+   */
+  numeroBR(valor, casas = 2) {
+    const num = Number(valor) || 0;
+    return num.toLocaleString('pt-BR', {
+      minimumFractionDigits: casas,
+      maximumFractionDigits: casas
+    });
+  },
+
   calcularTurno(entrada) {
     const kmTotal = entrada.kmFim > entrada.kmIni
       ? (entrada.kmFim - entrada.kmIni)

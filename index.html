@@ -16,7 +16,7 @@
 <body>
 
 <div class="app-shell">
-  <!-- TOP BAR COM PÍLULA DE GANHOS ESTILO UBER DRIVER -->
+  <!-- TOP BAR SIMÉTRICA 3 COLUNAS COM PÍLULA CENTRAL DE GANHOS -->
   <header class="uber-topbar">
     <div class="status-dot-wrap">
       <span id="topStatusDot" class="status-dot"></span>
@@ -28,7 +28,10 @@
       <strong id="pillLucroHoje">R$ 0,00</strong>
     </div>
 
-    <button id="btnInstall" class="btn-install-top" onclick="UIController.instalarPWA()">Instalar</button>
+    <div class="topbar-right">
+      <button id="badgeSemanaTopo" type="button" class="week-top-badge" onclick="UIController.abrirResumoSemanaRapido()" title="Ver Semana Atual">S--</button>
+      <button id="btnInstall" type="button" class="btn-install-top" onclick="UIController.instalarPWA()">Instalar</button>
+    </div>
   </header>
 
   <!-- ========================================================================
@@ -41,10 +44,10 @@
     <!-- Card Principal de Ganhos (Estilo Uber Earnings) -->
     <div class="uber-card">
       <div class="uber-segmented">
-        <button class="seg-btn active" onclick="UIController.mudarPeriodo('hoje', this)">Hoje</button>
-        <button class="seg-btn" onclick="UIController.mudarPeriodo('7dias', this)">Semana</button>
-        <button class="seg-btn" onclick="UIController.mudarPeriodo('mes', this)">Mês</button>
-        <button class="seg-btn" onclick="UIController.mudarPeriodo('tudo', this)">Total</button>
+        <button id="seg-hoje" class="seg-btn active" onclick="UIController.mudarPeriodo('hoje', this)">Hoje</button>
+        <button id="seg-7dias" class="seg-btn" onclick="UIController.mudarPeriodo('7dias', this)">Semana</button>
+        <button id="seg-mes" class="seg-btn" onclick="UIController.mudarPeriodo('mes', this)">Mês</button>
+        <button id="seg-tudo" class="seg-btn" onclick="UIController.mudarPeriodo('tudo', this)">Total</button>
       </div>
 
       <!-- Navegador de Semana do Ano (Semana 01 a 52) e Mês -->
@@ -80,44 +83,43 @@
         </div>
       </div>
 
-      <!-- Gráfico de Barras Semanal (Seg–Dom na aba Semana ou Últimos 7 Dias) -->
-      <div id="grafico7Dias" class="uber-chart"></div>
+      <!-- Gráfico de Barras Semanal com Linha de Meta e Destaque Interativo -->
+      <div class="chart-wrapper">
+        <div id="grafico7Dias" class="uber-chart"></div>
+        <div id="detalheBarraGrafico" class="chart-selected-detail"></div>
+      </div>
 
       <!-- Inteligência Semanal: Melhor Dia p/ Rodar vs. Melhor Dia p/ Folgar -->
       <div id="insightDiaSemana" class="weekday-insight"></div>
     </div>
 
-    <!-- Card de Metas (Meta Diária + Meta da Semana Segunda a Domingo) -->
+    <!-- Card Unificado de Metas (Alternância Limpa entre Meta do Dia e Meta da Semana) -->
     <div class="uber-card">
-      <div class="goal-row">
-        <span id="txtMetaInfo">🎯 Meta Líquida Hoje: <strong>R$ 200,00</strong></span>
-        <button class="chip-btn" onclick="UIController.editarMetaDiaria()">Editar dia</button>
+      <div class="card-header-row compact">
+        <div class="goal-header-tabs">
+          <button id="btnAbaMetaDia" type="button" class="goal-tab-btn active" onclick="UIController.alternarAbaMeta('dia')">🎯 Meta Hoje</button>
+          <button id="btnAbaMetaSemana" type="button" class="goal-tab-btn" onclick="UIController.alternarAbaMeta('semana')">📅 Meta Semana</button>
+        </div>
+        <button id="btnEditarMetaUnificada" type="button" class="chip-btn" onclick="UIController.editarMetaAtiva()">Editar meta</button>
       </div>
-      <div class="goal-track">
-        <div id="barraMetaFill" class="goal-fill"></div>
-      </div>
-      <div id="txtMetaRitmo" style="font-size:0.76rem; color:var(--uber-muted); margin-top:8px;"></div>
-
-      <div class="goal-divider"></div>
 
       <div class="goal-row">
-        <span id="txtMetaSemanalInfo">📅 Meta da Semana: <strong>R$ 1.200,00</strong></span>
-        <button class="chip-btn" onclick="UIController.editarMetaSemanal()">Editar semana</button>
+        <span id="txtMetaUnificadaInfo">🎯 Meta Hoje: <strong>R$ 200,00</strong></span>
       </div>
       <div class="goal-track">
-        <div id="barraMetaSemanalFill" class="goal-fill weekly"></div>
+        <div id="barraMetaUnificadaFill" class="goal-fill"></div>
       </div>
-      <div id="txtMetaSemanalRitmo" style="font-size:0.76rem; color:var(--uber-muted); margin-top:8px;"></div>
+      <div id="txtMetaUnificadaRitmo" class="text-helper"></div>
     </div>
 
     <!-- Ferramentas Rápidas do Motorista (Anti-Bagunça: Painéis Recolhidos) -->
     <div class="uber-card">
-      <div class="card-header-row" style="margin-bottom:10px;">
+      <div class="card-header-row compact">
         <h2 class="card-title">⚡ Ferramentas de Pista</h2>
-        <span id="badgeOleoStatus" class="status-badge status-good" style="cursor:pointer;" onclick="UIController.configurarTrocaOleo()">🔧 Óleo OK</span>
+        <span id="badgeOleoStatus" class="status-badge status-good" onclick="UIController.configurarTrocaOleo()">🔧 Óleo OK</span>
       </div>
 
-      <div class="grid-3" style="margin-bottom:4px;">
+      <div class="grid-3">
         <button type="button" class="quick-exp-btn" onclick="UIController.togglePainel('painelSimuladorCorrida')">
           <span>🚦</span>Vale a Corrida?
         </button>
@@ -129,12 +131,12 @@
         </button>
       </div>
 
-      <div id="infoManutencaoFixo" style="font-size:0.76rem; color:var(--uber-muted); margin-top:8px;"></div>
+      <div id="infoManutencaoFixo" class="text-helper"></div>
 
       <!-- Simulador Rápido: "Vale a Pena Essa Corrida?" -->
-      <div id="painelSimuladorCorrida" class="collapsible-panel" style="margin-top:10px; margin-bottom:0;">
-        <div style="font-size:0.78rem; font-weight:800; color:var(--uber-white); margin-bottom:8px;">
-          🚦 Avaliador Rápido de Oferta (Uber / 99)
+      <div id="painelSimuladorCorrida" class="collapsible-panel panel-bottom">
+        <div class="card-header-row compact">
+          <strong class="text-white">🚦 Avaliador Rápido de Oferta (Uber / 99)</strong>
         </div>
         <div class="grid-3">
           <div>
@@ -150,23 +152,23 @@
             <input type="number" id="simMin" inputmode="numeric" placeholder="Ex: 20" oninput="UIController.simularCorrida()">
           </div>
         </div>
-        <div id="resultadoSimulador" style="font-size:0.82rem; color:var(--uber-muted);">
+        <div id="resultadoSimulador" class="text-helper">
           Digite o valor e os KMs totais da chamada para ver o lucro real.
         </div>
       </div>
     </div>
 
     <!-- Banner Inteligente de Lembrete de Backup -->
-    <div id="bannerBackup" class="uber-card" style="display:none; border-color:var(--uber-yellow); background:rgba(255,192,67,0.08);"></div>
+    <div id="bannerBackup" class="uber-card banner-card banner-warning"></div>
   </section>
 
   <!-- ========================================================================
        ABA 2: FECHAR TURNO (CALCULADORA LIMPA E ORGANIZADA)
        ======================================================================== -->
   <section id="tab-fechar" class="tab-view">
-    <div id="bannerModoEdicao" class="uber-card" style="display:none; border-color:var(--uber-blue); background:var(--uber-blue-soft); padding:12px 16px;">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span id="txtModoEdicao" style="font-size:0.84rem; font-weight:800;">✏️ Editando turno salvo</span>
+    <div id="bannerModoEdicao" class="uber-card banner-card banner-info">
+      <div class="banner-row">
+        <strong id="txtModoEdicao">✏️ Editando turno salvo</strong>
         <button type="button" class="chip-btn" onclick="UIController.cancelarEdicaoTurno()">Cancelar edição</button>
       </div>
     </div>
@@ -223,22 +225,22 @@
         <div class="grid-3">
           <div>
             <label>Uber (R$)</label>
-            <input type="number" id="ganhoUber" step="0.01" inputmode="decimal" placeholder="0.00" oninput="UIController.somarApps()">
+            <input type="number" id="ganhoUber" step="0.01" inputmode="decimal" placeholder="0,00" oninput="UIController.somarApps()">
           </div>
           <div>
             <label>99 (R$)</label>
-            <input type="number" id="ganho99" step="0.01" inputmode="decimal" placeholder="0.00" oninput="UIController.somarApps()">
+            <input type="number" id="ganho99" step="0.01" inputmode="decimal" placeholder="0,00" oninput="UIController.somarApps()">
           </div>
           <div>
             <label>Pix/Outros</label>
-            <input type="number" id="ganhoOutros" step="0.01" inputmode="decimal" placeholder="0.00" oninput="UIController.somarApps()">
+            <input type="number" id="ganhoOutros" step="0.01" inputmode="decimal" placeholder="0,00" oninput="UIController.somarApps()">
           </div>
         </div>
       </div>
 
       <div>
         <label>Total Bruto Recebido no Dia (R$)</label>
-        <input type="number" id="faturamento" step="0.01" inputmode="decimal" placeholder="Ex: 350.00">
+        <input type="number" id="faturamento" step="0.01" inputmode="decimal" placeholder="Ex: 350,00">
       </div>
     </div>
 
@@ -265,29 +267,29 @@
       <div class="grid-2">
         <div>
           <label>Combustível / GNV (R$)</label>
-          <input type="number" id="combustivel" step="0.01" inputmode="decimal" placeholder="0.00">
+          <input type="number" id="combustivel" step="0.01" inputmode="decimal" placeholder="0,00">
         </div>
         <div>
           <label>Alimentação / Água (R$)</label>
-          <input type="number" id="alimentacao" step="0.01" inputmode="decimal" placeholder="0.00">
+          <input type="number" id="alimentacao" step="0.01" inputmode="decimal" placeholder="0,00">
         </div>
       </div>
 
       <div class="grid-2">
         <div>
           <label>Diária / Aluguel Carro (R$)</label>
-          <input type="number" id="diariaCarro" step="0.01" inputmode="decimal" placeholder="0.00">
+          <input type="number" id="diariaCarro" step="0.01" inputmode="decimal" placeholder="0,00">
         </div>
         <div>
           <label>Pedágio / Lavagem / Outros</label>
-          <input type="number" id="outrosGastos" step="0.01" inputmode="decimal" placeholder="0.00">
+          <input type="number" id="outrosGastos" step="0.01" inputmode="decimal" placeholder="0,00">
         </div>
       </div>
 
       <div>
         <label>
           <span>Reserva Manutenção por KM (R$)</span>
-          <span style="text-transform:none; font-weight:500;">Pneus, óleo, freios</span>
+          <span class="label-hint">Pneus, óleo, freios</span>
         </label>
         <input type="number" id="custoKm" step="0.01" inputmode="decimal" value="0.15">
       </div>
@@ -307,23 +309,23 @@
   <section id="tab-historico" class="tab-view">
     <!-- Central de Backup e Proteção Contra Perda de Dados -->
     <div class="uber-card">
-      <div class="card-header-row">
+      <div class="card-header-row compact">
         <h2 class="card-title">🛡️ Proteção e Backup dos Dados</h2>
         <span id="badgeCofreStatus" class="status-badge status-good">Cofre Ativo</span>
       </div>
-      <div id="infoSegurancaDados" style="font-size:0.82rem; color:var(--uber-muted); margin-bottom:12px;"></div>
+      <div id="infoSegurancaDados" class="text-helper"></div>
 
-      <div class="grid-2" style="margin-bottom:8px;">
-        <button type="button" class="btn-uber-primary" style="min-height:46px; font-size:0.88rem;" onclick="UIController.exportarBackupJSON()">
+      <div class="grid-2" style="margin-top:12px;">
+        <button type="button" class="btn-uber-primary" onclick="UIController.exportarBackupJSON()">
           📤 Salvar Backup
         </button>
-        <button type="button" class="btn-uber-ghost" style="min-height:46px; font-size:0.88rem;" onclick="document.getElementById('inputImportarBackup').click()">
+        <button type="button" class="btn-uber-ghost" onclick="document.getElementById('inputImportarBackup').click()">
           📥 Restaurar Backup
         </button>
       </div>
       <input type="file" id="inputImportarBackup" accept=".json,application/json" style="display:none" onchange="UIController.importarBackupArquivo(event)">
 
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+      <div class="banner-row" style="margin-top:10px;">
         <button type="button" class="chip-btn" onclick="UIController.togglePainel('painelPontosRestauracao')">
           ⏪ Pontos de Restauração (Desfazer)
         </button>
@@ -332,7 +334,7 @@
         </button>
       </div>
 
-      <div id="painelPontosRestauracao" class="collapsible-panel" style="margin-top:10px; margin-bottom:0;">
+      <div id="painelPontosRestauracao" class="collapsible-panel panel-bottom">
         <div id="listaPontosRestauracao"></div>
       </div>
     </div>
@@ -340,7 +342,7 @@
     <div class="uber-card">
       <div class="card-header-row">
         <h2 class="card-title">Histórico de Atividades</h2>
-        <span id="lblTotalHistorico" style="font-size:0.75rem; color:var(--uber-muted);"></span>
+        <span id="lblTotalHistorico" class="text-muted-sm"></span>
       </div>
 
       <!-- Filtro Rápido por Semana do Ano / Mês -->
@@ -350,7 +352,7 @@
 
       <div id="listaHistorico"></div>
 
-      <button class="btn-uber-ghost" style="margin-top:12px; color:var(--uber-red); border-color:rgba(225,25,0,0.35);" onclick="UIController.limparTodoHistorico()">
+      <button class="btn-uber-ghost danger-outline" onclick="UIController.limparTodoHistorico()">
         Apagar Todo o Histórico do Celular
       </button>
     </div>
