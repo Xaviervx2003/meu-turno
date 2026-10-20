@@ -56,11 +56,9 @@
       <div class="hero-earnings">
         <div class="hero-label" id="lblPeriodoTitulo">LUCRO LÍQUIDO LIVRE (HOJE)</div>
         <div class="hero-amount" id="kpiLucroLiquido">R$ 0,00</div>
-        <div class="hero-breakdown">
+        <div class="hero-breakdown dot-list">
           <span>Bruto: <b id="kpiBruto">R$ 0,00</b></span>
-          <span>•</span>
           <span>Custos: <b id="kpiCustos">R$ 0,00</b></span>
-          <span>•</span>
           <span id="kpiTurnosCount">0 turnos</span>
         </div>
 
@@ -83,10 +81,18 @@
         </div>
       </div>
 
-      <!-- Gráfico de Barras Semanal com Linha de Meta e Destaque Interativo -->
+      <!-- Gráfico de 7 Dias: cabeçalho com legenda, barras com linha de meta e rodapé fixo -->
       <div class="chart-wrapper">
-        <div id="grafico7Dias" class="uber-chart"></div>
-        <div id="detalheBarraGrafico" class="chart-selected-detail"></div>
+        <div class="chart-head">
+          <span id="tituloGrafico" class="chart-title">Últimos 7 dias</span>
+          <div class="chart-legend">
+            <span class="legend-item"><i class="legend-swatch blue"></i>Hoje</span>
+            <span class="legend-item"><i class="legend-swatch green"></i>Na meta</span>
+            <span class="legend-item"><i class="legend-dash"></i><span id="legendaMetaValor">Meta</span></span>
+          </div>
+        </div>
+        <div id="grafico7Dias" class="uber-chart" role="group" aria-label="Lucro líquido por dia"></div>
+        <div id="rodapeGrafico" class="chart-footer" aria-live="polite"></div>
       </div>
 
       <!-- Inteligência Semanal: Melhor Dia p/ Rodar vs. Melhor Dia p/ Folgar -->
@@ -315,7 +321,7 @@
       </div>
       <div id="infoSegurancaDados" class="text-helper"></div>
 
-      <div class="grid-2" style="margin-top:12px;">
+      <div class="grid-2 mt-12">
         <button type="button" class="btn-uber-primary" onclick="UIController.exportarBackupJSON()">
           📤 Salvar Backup
         </button>
@@ -323,9 +329,9 @@
           📥 Restaurar Backup
         </button>
       </div>
-      <input type="file" id="inputImportarBackup" accept=".json,application/json" style="display:none" onchange="UIController.importarBackupArquivo(event)">
+      <input type="file" id="inputImportarBackup" class="hidden" accept=".json,application/json" onchange="UIController.importarBackupArquivo(event)">
 
-      <div class="banner-row" style="margin-top:10px;">
+      <div class="banner-row mt-12">
         <button type="button" class="chip-btn" onclick="UIController.togglePainel('painelPontosRestauracao')">
           ⏪ Pontos de Restauração (Desfazer)
         </button>

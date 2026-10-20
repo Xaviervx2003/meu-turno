@@ -142,7 +142,7 @@ const UIController = {
       : '';
 
     const botaoPausaHTML = emPausa
-      ? `<button type="button" class="btn-uber-green" style="margin-bottom:10px;" onclick="UIController.alternarPausaTurno()">
+      ? `<button type="button" class="btn-uber-green mb-12" onclick="UIController.alternarPausaTurno()">
            ▶ Retomar Turno (Voltar p/ Pista)
          </button>`
       : `<button type="button" class="btn-uber-pause" onclick="UIController.alternarPausaTurno()">
@@ -480,7 +480,7 @@ const UIController = {
         <span>Lucro Líquido (${calc.margemLiquida}%)</span>
         <span style="color:${corLucro}">${FinanceEngine.moeda(reg.lucroLiquido)}</span>
       </div>
-      <button type="button" class="btn-uber-ghost" style="margin-top:14px;" onclick="UIController.copiarWhatsApp()">
+      <button type="button" class="btn-uber-ghost mt-16" onclick="UIController.copiarWhatsApp()">
         📲 Copiar Resumo para WhatsApp
       </button>
     `;
@@ -610,7 +610,8 @@ const UIController = {
     document.getElementById('kpiBruto').textContent = FinanceEngine.moeda(resumoAtual.somaBruto);
     document.getElementById('kpiCustos').textContent = FinanceEngine.moeda(resumoAtual.somaCustos);
     document.getElementById('kpiTurnosCount').textContent =
-      `${filtrados.length} turno${filtrados.length === 1 ? '' : 's'} (${resumoAtual.diasTrabalhados}d)`;
+      `${filtrados.length} turno${filtrados.length === 1 ? '' : 's'}` +
+      (this.periodoAtual !== 'hoje' ? ` em ${resumoAtual.diasTrabalhados} dia${resumoAtual.diasTrabalhados === 1 ? '' : 's'}` : '');
 
     document.getElementById('kpiMediaKm').textContent = FinanceEngine.moeda(resumoAtual.mediaKm);
     document.getElementById('kpiMediaHora').textContent =
@@ -911,111 +912,166 @@ const UIController = {
     `;
   },
 
-  renderizarGrafico7Dias(turnos, meta, infoSemanaSelecionada) {
-    const container = document.getElementById('grafico7Dias');
-    const detalheEl = document.getElementById('detalheBarraGrafico');
-    if (!container) return;
-
+  /* --- Gráfico de 7 Dias (escala com folga, linha de meta, legenda e rodapé fixo) --- */
+  montarDiasGrafico(turnos, infoSemanaSelecionada) {
     const hojeStr = new Date().toLocaleDateString('pt-BR');
-    let dias = [];
+    const nomesDias = CalendarEngine.DIAS_CURTOS;
 
+    let datas;
     if (this.periodoAtual === '7dias' && infoSemanaSelecionada) {
-      dias = infoSemanaSelecionada.diasDaSemana.map(d => {
-        const turnosDia = turnos.filter(t => t.data === d.dataBR);
-        const resumoDia = FinanceEngine.resumirLista(turnosDia);
-        return {
-          rotulo: d.rotulo,
-          dataCompleta: `${d.rotulo}, ${d.diaMes}`,
-          valor: resumoDia.somaLucro,
-          km: resumoDia.somaKm,
-          horas: resumoDia.somaHoras,
-          ehHoje: d.dataBR === hojeStr
-        };
-      });
+      datas = infoSemanaSelecionada.diasDaSemana.map(d => d.dataObj);
     } else {
-      const nomesDias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
       const hoje = new Date();
-
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - i);
-        const dataBR = d.toLocaleDateString('pt-BR');
-        const turnosDia = turnos.filter(t => t.data === dataBR);
-        const resumoDia = FinanceEngine.resumirLista(turnosDia);
-        const diaMes = CalendarEngine.formatarDiaMesCurto(d);
-
-        dias.push({
-          rotulo: i === 0 ? 'Hoje' : nomesDias[d.getDay()],
-          dataCompleta: `${nomesDias[d.getDay()]}, ${diaMes}`,
-          valor: resumoDia.somaLucro,
-          km: resumoDia.somaKm,
-          horas: resumoDia.somaHoras,
-          ehHoje: i === 0
-        });
-      }
+      datas = Array.from({ length: 7 }, (_, i) =>
+        new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - (6 - i), 12, 0, 0)
+      );
     }
 
+    return datas.map(dt => {
+      const dataBR = dt.toLocaleDateString('pt-BR');
+      const turnosDia = turnos.filter(t => t.data === dataBR);
+      const resumo = FinanceEngine.resumirLista(turnosDia);
+      const ehHoje = dataBR === hojeStr;
+      const nome = nomesDias[dt.getDay()];
+      return {
+        rotulo: ehHoje ? 'Hoje' : nome,
+        dataCompleta: `${nome}, ${CalendarEngine.formatarDiaMesCurto(dt)}`,
+        valor: resumo.somaLucro,
+        km: resumo.somaKm,
+        horas: resumo.somaHoras,
+        qtdTurnos: turnosDia.length,
+        ehHoje
+      };
+    });
+  },
+
+  renderizarGrafico7Dias(turnos, meta, infoSemanaSelecionada) {
+    const container = document.getElementById('grafico7Dias');
+    if (!container) return;
+
+    const dias = this.montarDiasGrafico(turnos, infoSemanaSelecionada);
     this.ultimosDiasGrafico = dias;
+    this.metaGraficoAtual = meta;
 
-    const maxVal = Math.max(meta || 200, ...dias.map(d => d.valor), 50);
+    if (this.indiceBarraSelecionada !== null && !dias[this.indiceBarraSelecionada]) {
+      this.indiceBarraSelecionada = null;
+    }
 
-    // Posição vertical da linha tracejada de Meta dentro da área de barras (64px de altura, a 20px da base)
-    const pctMeta = meta > 0 ? Math.min(100, Math.max(10, Math.round((meta / maxVal) * 100))) : 0;
-    const bottomPx = Math.round(20 + (pctMeta / 100) * 64);
+    const titulo = document.getElementById('tituloGrafico');
+    if (titulo) {
+      titulo.textContent = (this.periodoAtual === '7dias' && infoSemanaSelecionada)
+        ? `Semana ${infoSemanaSelecionada.numStr} • Seg–Dom`
+        : 'Últimos 7 dias';
+    }
+    const legendaMeta = document.getElementById('legendaMetaValor');
+    if (legendaMeta) {
+      legendaMeta.textContent = meta > 0 ? `Meta ${FinanceEngine.moedaCurta(meta)}` : 'Sem meta';
+    }
+
+    // Escala com 18% de folga: a linha de meta e as barras nunca encostam nos rótulos de valor
+    const maiorValor = Math.max(0, ...dias.map(d => d.valor));
+    const escala = Math.max(meta || 0, maiorValor, 50) * 1.18;
 
     const linhaMetaHTML = meta > 0
-      ? `<div class="chart-goal-line" style="bottom:${bottomPx}px;">
-           <span class="chart-goal-tag">Meta ${FinanceEngine.moedaCurta(meta)}</span>
-         </div>`
+      ? `<div class="chart-goal-line" style="bottom: calc(var(--chart-day-h) + var(--chart-bar-h) * ${(meta / escala).toFixed(4)});"></div>`
       : '';
 
     const colunasHTML = dias.map((d, idx) => {
-      const alturaPct = d.valor > 0 ? Math.max(8, Math.min(100, Math.round((d.valor / maxVal) * 100))) : 4;
-      const classesBarra = [
-        'chart-bar',
-        d.ehHoje ? 'today' : '',
-        d.valor >= meta && meta > 0 ? 'hit-goal' : ''
-      ].filter(Boolean).join(' ');
+      let classesBarra = 'chart-bar';
+      let alturaPct = 0;
 
+      if (d.valor > 0) {
+        alturaPct = Math.max(6, Math.round((d.valor / escala) * 100));
+        if (meta > 0 && d.valor >= meta) classesBarra += ' hit-goal';
+        else if (d.ehHoje) classesBarra += ' today';
+      } else if (d.valor < 0) {
+        alturaPct = 6;
+        classesBarra += ' negative';
+      } else {
+        classesBarra += ' empty';
+      }
+
+      // Dias sem turno não mostram rótulo (antes era "—", poluía o gráfico)
+      const rotuloValor = d.valor !== 0
+        ? `${d.valor < 0 ? '-' : ''}R$${Math.abs(Math.round(d.valor)).toLocaleString('pt-BR')}`
+        : '';
       const selecionado = this.indiceBarraSelecionada === idx;
-      const txtVal = d.valor > 0 ? `R$${Math.round(d.valor)}` : '—';
+      const aria = `${d.dataCompleta}: ${d.qtdTurnos > 0 ? FinanceEngine.moeda(d.valor) : 'sem turno'}`;
 
       return `
-        <div class="chart-col ${selecionado ? 'selected' : ''}" onclick="UIController.selecionarBarraGrafico(${idx})">
-          <span class="chart-val">${txtVal}</span>
-          <div class="chart-bar-wrap">
-            <div class="${classesBarra}" style="height:${alturaPct}%"></div>
-          </div>
+        <button type="button" class="chart-col ${selecionado ? 'selected' : ''}" data-idx="${idx}"
+                aria-pressed="${selecionado}" aria-label="${aria}" onclick="UIController.selecionarBarraGrafico(${idx})">
+          <span class="chart-val ${d.valor < 0 ? 'neg' : ''}">${rotuloValor}</span>
+          <span class="chart-bar-wrap"><span class="${classesBarra}" style="height:${alturaPct}%"></span></span>
           <span class="chart-day ${d.ehHoje ? 'today-label' : ''}">${d.rotulo}</span>
-        </div>
+        </button>
       `;
     }).join('');
 
     container.innerHTML = linhaMetaHTML + colunasHTML;
-
-    if (detalheEl) {
-      if (this.indiceBarraSelecionada !== null && dias[this.indiceBarraSelecionada]) {
-        const sel = dias[this.indiceBarraSelecionada];
-        detalheEl.classList.add('visible');
-        detalheEl.innerHTML = `
-          <span>📅 <b class="text-white">${sel.dataCompleta}</b></span>
-          <span>
-            Líq: <b class="text-green">${FinanceEngine.moeda(sel.valor)}</b>
-            ${sel.km > 0 ? ` • ${sel.km.toFixed(0)} km` : ''}
-            ${sel.horas > 0 ? ` • ${sel.horas.toFixed(1)}h` : ''}
-          </span>
-        `;
-      } else {
-        detalheEl.classList.remove('visible');
-      }
-    }
+    container.classList.toggle('has-selection', this.indiceBarraSelecionada !== null);
+    this.renderizarRodapeGrafico();
   },
 
+  renderizarRodapeGrafico() {
+    const rodape = document.getElementById('rodapeGrafico');
+    if (!rodape) return;
+
+    const dias = this.ultimosDiasGrafico || [];
+    const meta = this.metaGraficoAtual || 0;
+    const sel = this.indiceBarraSelecionada !== null ? dias[this.indiceBarraSelecionada] : null;
+
+    // Modo detalhe: dia tocado
+    if (sel) {
+      rodape.classList.add('is-detail');
+      if (sel.qtdTurnos === 0) {
+        rodape.innerHTML = `<span>📅 <b>${sel.dataCompleta}</b></span><span>Sem turno registrado</span>`;
+        return;
+      }
+      const partes = [`<b class="${sel.valor >= 0 ? 'text-green' : 'text-red'}">${FinanceEngine.moeda(sel.valor)}</b>`];
+      if (sel.km > 0) partes.push(`${sel.km.toFixed(0)} km`);
+      if (sel.horas > 0) partes.push(`${FinanceEngine.numeroBR(sel.horas, 1)}h`);
+      if (meta > 0) partes.push(`${Math.round((sel.valor / meta) * 100)}% da meta`);
+
+      rodape.innerHTML = `
+        <span>📅 <b>${sel.dataCompleta}</b></span>
+        <span class="dot-list">${partes.map(p => `<span>${p}</span>`).join('')}</span>
+      `;
+      return;
+    }
+
+    // Modo resumo (padrão): total dos 7 dias + dias na meta
+    rodape.classList.remove('is-detail');
+    const diasRodados = dias.filter(d => d.qtdTurnos > 0);
+    if (diasRodados.length === 0) {
+      rodape.innerHTML = `<span>Nenhum turno neste período</span><span>Toque numa barra p/ ver o dia</span>`;
+      return;
+    }
+
+    const total = diasRodados.reduce((acc, d) => acc + d.valor, 0);
+    const naMeta = meta > 0 ? diasRodados.filter(d => d.valor >= meta).length : 0;
+    rodape.innerHTML = `
+      <span>Total: <b>${FinanceEngine.moeda(total)}</b> em ${diasRodados.length} dia${diasRodados.length === 1 ? '' : 's'}</span>
+      <span>🎯 <b>${naMeta}/${diasRodados.length}</b> na meta</span>
+    `;
+  },
+
+  /** Seleciona/desmarca um dia SEM redesenhar o gráfico (evita repetir a animação das barras) */
   selecionarBarraGrafico(idx) {
     this.indiceBarraSelecionada = this.indiceBarraSelecionada === idx ? null : idx;
-    const turnos = StorageService.obterTurnos();
-    const metaDiaria = StorageService.obterNumero(KEYS.META_DIARIA, DEFAULTS.META_DIARIA);
-    const infoSem = CalendarEngine.obterSemanaPorOffset(this.offsetSemana);
-    this.renderizarGrafico7Dias(turnos, metaDiaria, infoSem);
+
+    const container = document.getElementById('grafico7Dias');
+    if (!container) return;
+
+    container.querySelectorAll('.chart-col').forEach(col => {
+      const ativo = Number(col.dataset.idx) === this.indiceBarraSelecionada;
+      col.classList.toggle('selected', ativo);
+      col.setAttribute('aria-pressed', String(ativo));
+    });
+    container.classList.toggle('has-selection', this.indiceBarraSelecionada !== null);
+
+    this.renderizarRodapeGrafico();
+    if (navigator.vibrate) navigator.vibrate(8);
   },
 
   /* ==========================================================================
@@ -1104,12 +1160,12 @@ const UIController = {
 
     out.innerHTML = `
       <div class="sim-verdict-box" style="border-left-color:${cor};">
-        <div style="color:${cor}; font-size:0.88rem; margin-bottom:4px;">${veredito}</div>
-        <div class="text-white" style="font-weight:700;">
+        <div class="sim-verdict-title" style="color:${cor};">${veredito}</div>
+        <div class="sim-verdict-main">
           Lucro Livre: ${FinanceEngine.moeda(lucroCorrida)} • Líq: ${FinanceEngine.moeda(reaisPorKmLiq)}/km
           ${min > 0 ? ` • ${FinanceEngine.moedaCurta(ganhoHoraLiq)}/h` : ''}
         </div>
-        <div class="text-muted-sm" style="margin-top:2px;">
+        <div class="sim-verdict-sub">
           Bruto: ${FinanceEngine.moeda(reaisPorKmBruto)}/km • Custo estimado da corrida: ${FinanceEngine.moeda(custoTotalCorrida)}
         </div>
       </div>
@@ -1319,11 +1375,11 @@ const UIController = {
                 <span id="hint-turno-${item.id}" class="act-toggle-hint">▾ Raio-X</span>
               </div>
             </div>
-            <div class="act-meta">
+            <div class="act-meta dot-list">
               ${fat ? `<span>${fat}</span>` : ''}
-              ${cus ? `<span>• ${cus}</span>` : ''}
-              <span>• ${FinanceEngine.moeda(item.liquidoKm)}/km</span>
-              ${hrs ? `<span>• ${hrs}</span>` : ''}
+              ${cus ? `<span>${cus}</span>` : ''}
+              <span>${FinanceEngine.moeda(item.liquidoKm)}/km</span>
+              ${hrs ? `<span>${hrs}</span>` : ''}
             </div>
 
             <div class="act-details-panel" onclick="event.stopPropagation()">
@@ -1565,7 +1621,7 @@ const UIController = {
     if (elInfo) {
       elInfo.innerHTML = `
         <div>• <b>Cofre Duplo Local:</b> Salvo em <code>localStorage</code> + <code>IndexedDB</code> (${turnos.length} turnos).</div>
-        <div style="margin-top:4px;">• ${textoUltimoBackup}</div>
+        <div class="mt-4">• ${textoUltimoBackup}</div>
       `;
     }
 
