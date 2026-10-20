@@ -1,9 +1,15 @@
-const CACHE_NAME = 'meu-turno-v8';
+const CACHE_NAME = 'meu-turno-v9';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  './icon.svg'
+  './icon.svg',
+  './css/styles.css',
+  './js/storage.js',
+  './js/calendar.js',
+  './js/finance.js',
+  './js/sheet.js',
+  './js/ui.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -31,8 +37,8 @@ self.addEventListener('fetch', (event) => {
       const fetchPromise = fetch(event.request)
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
-            const copy = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           }
           return networkResponse;
         })
