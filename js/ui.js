@@ -1301,20 +1301,21 @@ const UIController = {
 
     if (selectFiltro) {
       selectFiltro.style.display = 'block';
+      const txtTurnosTotal = `${turnos.length} turno${turnos.length === 1 ? '' : 's'}`;
       const opcoesSemana = todosGruposSemana.map(g =>
         `<option value="SEM:${g.chaveSemana}" ${this.filtroHistorico === `SEM:${g.chaveSemana}` ? 'selected' : ''}>` +
-        `📅 Semana ${g.numStr}/${g.anoISO} (${g.intervaloCurto}) — Líq: ${FinanceEngine.moedaCurta(g.somaLucro)} (${g.turnos.length}t)` +
+        `📅 Semana ${g.numStr}/${g.anoISO} (${g.intervaloCurto}) — ${FinanceEngine.moedaCurta(g.somaLucro)}` +
         `</option>`
       ).join('');
 
       const opcoesMes = Array.from(mapaMeses.values()).map(m =>
         `<option value="${m.chave}" ${this.filtroHistorico === m.chave ? 'selected' : ''}>` +
-        `🗓️ Mês: ${m.rotulo} — Líq: ${FinanceEngine.moedaCurta(m.lucro)} (${m.qtd}t)` +
+        `🗓️ Mês: ${m.rotulo} — ${FinanceEngine.moedaCurta(m.lucro)}` +
         `</option>`
       ).join('');
 
       selectFiltro.innerHTML = `
-        <option value="todos" ${this.filtroHistorico === 'todos' ? 'selected' : ''}>📋 Todas as Semanas (${turnos.length} turnos)</option>
+        <option value="todos" ${this.filtroHistorico === 'todos' ? 'selected' : ''}>📋 Todas as Semanas (${txtTurnosTotal})</option>
         <optgroup label="Filtrar por Semana do Ano (Seg–Dom)">
           ${opcoesSemana}
         </optgroup>
@@ -1343,9 +1344,13 @@ const UIController = {
 
     container.innerHTML = gruposExibidos.map(grupo => {
       const totalAno = CalendarEngine.totalSemanasNoAnoISO(grupo.anoISO);
+      const qtdDias = grupo.diasUnicos.size;
+      const txtDias = `${qtdDias} dia${qtdDias === 1 ? '' : 's'}`;
+
       const cardsHTML = grupo.turnos.map(item => {
         const dt = this.parseData(item);
         const diaSem = diasCurto[dt.getDay()];
+        const dataCurta = CalendarEngine.formatarDiaMesCurto(dt);
         const fatNum = Number(item.faturamento || 0);
         const cusNum = Number(item.custosTotais || 0);
         const combNum = Number(item.combustivel || 0);
@@ -1353,10 +1358,7 @@ const UIController = {
         const diarNum = Number(item.diariaCarro || 0);
         const outrNum = Number(item.outrosGastos || 0);
         const manutNum = Number(item.provisaoManut || 0);
-
-        const fat = item.faturamento !== undefined ? `Bruto: ${FinanceEngine.moeda(fatNum)}` : '';
-        const cus = item.custosTotais !== undefined ? `Custos: ${FinanceEngine.moeda(cusNum)}` : '';
-        const hrs = item.horas ? `${item.horas}h (${FinanceEngine.moeda(item.liquidoHora)}/h)` : '';
+        const horasFormatada = item.horas > 0 ? `${FinanceEngine.numeroBR(item.horas, 1).replace(/,0$/, '')}h` : '';
 
         const textoOdometro = (item.kmInicial > 0 && item.kmFinal > 0)
           ? `${item.kmInicial} → ${item.kmFinal} km (${item.kmTotal} km)`
@@ -1369,21 +1371,21 @@ const UIController = {
         return `
           <div id="card-turno-${item.id}" class="activity-item" onclick="UIController.toggleDetalhesTurno('${item.id}')">
             <div class="act-header">
-              <span class="act-title">${item.data} (${diaSem}) • ${item.kmTotal} km</span>
+              <span class="act-title">${diaSem}, ${dataCurta} • ${item.kmTotal} km</span>
               <div class="act-header-right">
                 <span class="act-net">${FinanceEngine.moeda(item.lucroLiquido)}</span>
                 <span id="hint-turno-${item.id}" class="act-toggle-hint">▾ Raio-X</span>
               </div>
             </div>
-            <div class="act-meta dot-list">
-              ${fat ? `<span>${fat}</span>` : ''}
-              ${cus ? `<span>${cus}</span>` : ''}
-              <span>${FinanceEngine.moeda(item.liquidoKm)}/km</span>
-              ${hrs ? `<span>${hrs}</span>` : ''}
+            <div class="act-meta-grid">
+              <span>Bruto: <b>${FinanceEngine.moeda(fatNum)}</b></span>
+              <span>Custos: <b>${FinanceEngine.moeda(cusNum)}</b></span>
+              <span>Líq/KM: <b class="text-green">${FinanceEngine.moeda(item.liquidoKm)}/km</b></span>
+              <span>${horasFormatada ? `Ritmo: <b>${horasFormatada} (${FinanceEngine.moeda(item.liquidoHora)}/h)</b>` : 'Horas: —'}</span>
             </div>
 
             <div class="act-details-panel" onclick="event.stopPropagation()">
-              <div class="act-detail-section-title">🛣️ Operação e Eficiência</div>
+              <div class="act-detail-section-title">🛣️ Operação e Eficiência (${item.data})</div>
               <div class="detail-box">
                 <div class="act-detail-row">
                   <span>Odômetro</span>
@@ -1391,7 +1393,7 @@ const UIController = {
                 </div>
                 <div class="act-detail-row">
                   <span>Horas líquidas na pista</span>
-                  <span>${item.horas > 0 ? `${item.horas}h (${FinanceEngine.moeda(item.liquidoHora)}/h)` : 'Não informado'}</span>
+                  <span>${horasFormatada ? `${horasFormatada} (${FinanceEngine.moeda(item.liquidoHora)}/h)` : 'Não informado'}</span>
                 </div>
                 <div class="act-detail-row">
                   <span>Viagens / Ticket médio</span>
@@ -1446,13 +1448,17 @@ const UIController = {
 
       return `
         <div class="week-group-header">
-          <div>
-            <div class="week-group-title">📅 Semana ${grupo.numStr}/${totalAno} (${grupo.anoISO}) • ${grupo.intervaloCurto}</div>
-            <div class="week-group-sub">${grupo.diasUnicos.size} dia(s) • Bruto: ${FinanceEngine.moeda(grupo.somaBruto)} • ${grupo.somaKm.toFixed(0)} km</div>
-          </div>
-          <div class="week-group-right">
+          <div class="week-group-top">
+            <span class="week-group-title">📅 Semana ${grupo.numStr}/${totalAno} • ${grupo.intervaloCurto}</span>
             <span class="week-group-net">${FinanceEngine.moeda(grupo.somaLucro)}</span>
-            <button type="button" class="chip-btn" onclick="UIController.compartilharSemana('${grupo.chaveSemana}')" title="Copiar Resumo da Semana p/ WhatsApp">📲 Semana</button>
+          </div>
+          <div class="week-group-bottom">
+            <span class="week-group-sub dot-list">
+              <span>${txtDias}</span>
+              <span>Bruto: ${FinanceEngine.moeda(grupo.somaBruto)}</span>
+              <span>${grupo.somaKm.toFixed(0)} km</span>
+            </span>
+            <button type="button" class="chip-btn" onclick="UIController.compartilharSemana('${grupo.chaveSemana}')" title="Copiar Resumo da Semana p/ WhatsApp">📲 Copiar</button>
           </div>
         </div>
         ${cardsHTML}
@@ -1611,17 +1617,26 @@ const UIController = {
     const turnos = StorageService.obterTurnos();
     const infoBackup = StorageGuard.obterInfoUltimoBackup();
     const lblTotal = document.getElementById('lblTotalHistorico');
-    if (lblTotal) lblTotal.textContent = `${turnos.length} registro(s)`;
+    if (lblTotal) {
+      lblTotal.textContent = `${turnos.length} registro${turnos.length === 1 ? '' : 's'}`;
+    }
 
+    const qtdBkp = infoBackup?.qtdTurnos || 0;
     const textoUltimoBackup = infoBackup
-      ? `Último backup externo: <b class="text-white">${infoBackup.dataFormatada}</b> (${infoBackup.qtdTurnos} turnos)`
-      : `<span class="text-yellow">Você ainda não salvou um arquivo de backup externo.</span>`;
+      ? `<b class="text-white">${infoBackup.dataFormatada}</b> (${qtdBkp} turno${qtdBkp === 1 ? '' : 's'})`
+      : `<span class="text-yellow">Nenhum backup salvo</span>`;
 
     const elInfo = document.getElementById('infoSegurancaDados');
     if (elInfo) {
       elInfo.innerHTML = `
-        <div>• <b>Cofre Duplo Local:</b> Salvo em <code>localStorage</code> + <code>IndexedDB</code> (${turnos.length} turnos).</div>
-        <div class="mt-4">• ${textoUltimoBackup}</div>
+        <div class="security-info-row">
+          <span>🔒 Memória blindada (Cofre Duplo)</span>
+          <b class="text-white">${turnos.length} turno${turnos.length === 1 ? '' : 's'}</b>
+        </div>
+        <div class="security-info-row">
+          <span>☁️ Último arquivo de backup</span>
+          <span>${textoUltimoBackup}</span>
+        </div>
       `;
     }
 

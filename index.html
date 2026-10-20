@@ -316,27 +316,27 @@
     <!-- Central de Backup e Proteção Contra Perda de Dados -->
     <div class="uber-card">
       <div class="card-header-row compact">
-        <h2 class="card-title">🛡️ Proteção e Backup dos Dados</h2>
-        <span id="badgeCofreStatus" class="status-badge status-good">Cofre Ativo</span>
+        <h2 class="card-title">🛡️ Backup e Segurança</h2>
+        <span id="badgeCofreStatus" class="status-badge status-good">✓ Cofre Ativo</span>
       </div>
-      <div id="infoSegurancaDados" class="text-helper"></div>
+      <div id="infoSegurancaDados" class="security-info-box"></div>
 
       <div class="grid-2 mt-12">
         <button type="button" class="btn-uber-primary" onclick="UIController.exportarBackupJSON()">
           📤 Salvar Backup
         </button>
         <button type="button" class="btn-uber-ghost" onclick="document.getElementById('inputImportarBackup').click()">
-          📥 Restaurar Backup
+          📥 Abrir Backup
         </button>
       </div>
       <input type="file" id="inputImportarBackup" class="hidden" accept=".json,application/json" onchange="UIController.importarBackupArquivo(event)">
 
-      <div class="banner-row mt-12">
-        <button type="button" class="chip-btn" onclick="UIController.togglePainel('painelPontosRestauracao')">
-          ⏪ Pontos de Restauração (Desfazer)
+      <div class="grid-2 mt-8">
+        <button type="button" class="btn-sub-action" onclick="UIController.togglePainel('painelPontosRestauracao')">
+          ⏪ Desfazer Exclusão
         </button>
-        <button type="button" class="chip-btn" onclick="UIController.exportarCSV()">
-          📊 Planilha Excel (CSV)
+        <button type="button" class="btn-sub-action" onclick="UIController.exportarCSV()">
+          📊 Planilha Excel
         </button>
       </div>
 
@@ -346,7 +346,7 @@
     </div>
 
     <div class="uber-card">
-      <div class="card-header-row">
+      <div class="card-header-row compact">
         <h2 class="card-title">Histórico de Atividades</h2>
         <span id="lblTotalHistorico" class="text-muted-sm"></span>
       </div>

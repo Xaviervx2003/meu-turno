@@ -734,14 +734,20 @@ body {
 
 .btn-uber-primary {
   width: 100%;
-  min-height: 50px;
+  min-height: 48px;
+  padding: 10px 12px;
   border-radius: var(--radius-md);
   border: none;
   background: var(--uber-white);
   color: var(--uber-black);
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: 800;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
 }
 
 .btn-uber-green {
@@ -761,17 +767,61 @@ body {
   color: var(--uber-white);
   border: 1px solid var(--uber-border);
   border-radius: var(--radius-md);
-  padding: 12px;
+  padding: 10px 12px;
   min-height: 48px;
-  font-size: 0.86rem;
-  font-weight: 700;
+  font-size: 0.88rem;
+  font-weight: 800;
   cursor: pointer;
   width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
 }
 .btn-uber-ghost.danger-outline {
   margin-top: 12px;
   color: var(--uber-red);
   border-color: rgba(225, 25, 0, 0.35);
+}
+
+.btn-sub-action {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--uber-border);
+  background: var(--uber-black);
+  color: var(--uber-white);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.btn-sub-action:active {
+  background: var(--uber-surface-elevated);
+}
+
+.security-info-box {
+  background: var(--uber-black);
+  border: 1px solid var(--uber-border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 0.78rem;
+  color: var(--uber-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.security-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
 }
 
 .chip-btn {
@@ -954,17 +1004,18 @@ input::placeholder {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .status-good { background: var(--uber-green-soft); color: var(--uber-green); }
 .status-warn { background: var(--uber-yellow-soft); color: var(--uber-yellow); }
 .status-bad  { background: var(--uber-red-soft); color: var(--uber-red); }
 
-/* Cabeçalho Divisor de Semana do Ano no Histórico */
+/* Cabeçalho Divisor de Semana do Ano no Histórico (Layout em 2 Linhas Limpas) */
 .week-group-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
   background: var(--uber-black);
   border: 1px solid var(--uber-border);
   border-left: 3px solid var(--uber-blue);
@@ -975,28 +1026,29 @@ input::placeholder {
 .week-group-header:first-child {
   margin-top: 2px;
 }
-.week-group-title {
-  font-size: 0.78rem;
-  font-weight: 900;
-  color: var(--uber-white);
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-.week-group-sub {
-  font-size: 0.72rem;
-  color: var(--uber-muted);
-  margin-top: 2px;
-}
-.week-group-right {
+.week-group-top,
+.week-group-bottom {
   display: flex;
+  justify-content: space-between;
   align-items: center;
   gap: 8px;
-  flex-shrink: 0;
+}
+.week-group-title {
+  font-size: 0.8rem;
+  font-weight: 900;
+  color: var(--uber-white);
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.week-group-sub {
+  font-size: 0.74rem;
+  color: var(--uber-muted);
 }
 .week-group-net {
-  font-size: 0.9rem;
+  font-size: 0.94rem;
   font-weight: 900;
   color: var(--uber-green);
+  white-space: nowrap;
 }
 
 .activity-item {
@@ -1023,7 +1075,8 @@ input::placeholder {
 }
 .act-title {
   font-weight: 800;
-  font-size: 0.94rem;
+  font-size: 0.92rem;
+  white-space: nowrap;
 }
 .act-header-right {
   display: flex;
@@ -1033,12 +1086,23 @@ input::placeholder {
 }
 .act-net {
   font-weight: 900;
-  font-size: 1rem;
+  font-size: 0.98rem;
   color: var(--uber-green);
+  white-space: nowrap;
 }
-.act-meta {
-  font-size: 0.78rem;
+.act-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 10px;
+  font-size: 0.76rem;
   color: var(--uber-muted);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+}
+.act-meta-grid b {
+  color: var(--uber-white);
+  font-weight: 700;
 }
 .act-toggle-hint {
   font-size: 0.7rem;
