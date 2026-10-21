@@ -992,7 +992,7 @@ body.privacy-mode #simValor:not(:focus) {
 /* Botões de Gasto Rápido na Rua */
 .quick-expense-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
   margin: 10px 0;
 }

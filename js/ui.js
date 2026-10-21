@@ -46,6 +46,7 @@ const UIController = {
   ultimoTextoWhatsApp: '',
   deferredPrompt: null,
   idTurnoEditando: null,
+  combustivelManual: false,
   tagsSelecionadas: [],
 
   hojeISO() {
@@ -302,6 +303,10 @@ const UIController = {
           <span>🍔</span>+ Refeição
           <small>${FinanceEngine.moedaCurta(ativo.alimentacao || 0)}</small>
         </button>
+        <button type="button" class="quick-exp-btn" onclick="UIController.lancarGastoRapido('outrosGastos', 'Pedágio / Lavagem / Outros', '🅿️')">
+          <span>🅿️</span>+ Outros
+          <small>${FinanceEngine.moedaCurta(ativo.outrosGastos || 0)}</small>
+        </button>
       </div>
 
       <div class="grid-2">
@@ -438,10 +443,19 @@ const UIController = {
     const tempoLiquidoMs = Math.max(0, (agoraMs - ativo.inicioMs) - pausaTotalMs);
     const horasDecorridas = Math.max(0.5, Number((tempoLiquidoMs / 3600000).toFixed(1)));
 
+    if (ativo.inicioMs > 0) {
+      const dIni = new Date(ativo.inicioMs);
+      const dataInicioISO = new Date(dIni.getTime() - dIni.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+      document.getElementById('dataTurno').value = dataInicioISO;
+    }
+
     if (ativo.kmInicial > 0) document.getElementById('kmInicial').value = ativo.kmInicial;
     document.getElementById('horasTrabalhadas').value = horasDecorridas;
     if (ativo.faturamentoParcial > 0) document.getElementById('faturamento').value = ativo.faturamentoParcial.toFixed(2);
-    if (ativo.combustivel > 0) document.getElementById('combustivel').value = ativo.combustivel.toFixed(2);
+    if (ativo.combustivel > 0) {
+      document.getElementById('combustivel').value = ativo.combustivel.toFixed(2);
+      this.combustivelManual = true;
+    }
     if (ativo.alimentacao > 0) document.getElementById('alimentacao').value = ativo.alimentacao.toFixed(2);
     if (ativo.outrosGastos > 0) document.getElementById('outrosGastos').value = ativo.outrosGastos.toFixed(2);
 
@@ -481,6 +495,11 @@ const UIController = {
     }
   },
 
+  aoDigitarCombustivelManual() {
+    const val = this.lerNumero('combustivel');
+    this.combustivelManual = val > 0;
+  },
+
   aoMudarOdometro() {
     const kmIni = this.lerNumero('kmInicial');
     const kmFim = this.lerNumero('kmFinal');
@@ -490,18 +509,19 @@ const UIController = {
 
     if (kmFim > kmIni) {
       document.getElementById('kmTotalInput').value = (kmFim - kmIni).toFixed(1).replace(/\.0$/, '');
-      this.calcularCombustivelPorConsumo();
+      this.calcularCombustivelPorConsumo(false);
     }
   },
 
   somarApps() {
     const soma = this.lerNumero('ganhoUber') + this.lerNumero('ganho99') + this.lerNumero('ganhoOutros');
-    if (soma > 0) {
-      document.getElementById('faturamento').value = soma.toFixed(2);
+    const elFat = document.getElementById('faturamento');
+    if (elFat) {
+      elFat.value = soma > 0 ? soma.toFixed(2) : '';
     }
   },
 
-  calcularCombustivelPorConsumo() {
+  calcularCombustivelPorConsumo(forcar = false) {
     const kmIni = this.lerNumero('kmInicial');
     const kmFim = this.lerNumero('kmFinal');
     const kmTotal = kmFim > kmIni ? (kmFim - kmIni) : this.lerNumero('kmTotalInput');
@@ -511,9 +531,14 @@ const UIController = {
     if (kml > 0) StorageService.salvarValor(KEYS.CONSUMO_KML, kml);
     if (preco > 0) StorageService.salvarValor(KEYS.PRECO_LITRO, preco);
 
+    if (!forcar && this.combustivelManual && this.lerNumero('combustivel') > 0) {
+      return;
+    }
+
     if (kmTotal > 0 && kml > 0 && preco > 0) {
       const custoComb = (kmTotal / kml) * preco;
       document.getElementById('combustivel').value = custoComb.toFixed(2);
+      if (forcar) this.combustivelManual = false;
     }
   },
 
@@ -572,6 +597,15 @@ const UIController = {
         }
         this.notificar('⚠️ KM Final não pode ser menor que o KM Inicial!');
         return;
+      }
+
+      const somaApps = Number((entrada.ganhoUber + entrada.ganho99 + entrada.ganhoOutros).toFixed(2));
+      if (somaApps > 0) {
+        if (entrada.faturamento < somaApps) {
+          entrada.faturamento = somaApps;
+        } else if (entrada.faturamento > somaApps) {
+          entrada.ganhoOutros = Number((entrada.ganhoOutros + (entrada.faturamento - somaApps)).toFixed(2));
+        }
       }
 
       const calc = FinanceEngine.calcularTurno(entrada);
@@ -2029,6 +2063,7 @@ const UIController = {
     document.getElementById('ganhoOutros').value = reg.ganhoOutros || '';
     document.getElementById('faturamento').value = reg.faturamento || '';
     document.getElementById('combustivel').value = reg.combustivel || '';
+    this.combustivelManual = Boolean(reg.combustivel && reg.combustivel > 0);
     document.getElementById('alimentacao').value = reg.alimentacao || '';
     document.getElementById('diariaCarro').value = reg.diariaCarro || '';
     document.getElementById('outrosGastos').value = reg.outrosGastos || '';
@@ -2306,7 +2341,7 @@ const UIController = {
       await Cofre.criarPonto(`Antes de restaurar backup (${atuais.length} turnos)`);
 
       const mapa = new Map();
-      [...listaImportada, ...atuais].forEach((t, idx) => {
+      [...atuais, ...listaImportada].forEach((t, idx) => {
         if (!t) return;
         const chave = t.id ? String(t.id) : `${t.data}_${t.kmTotal}_${t.faturamento}_${idx}`;
         if (!mapa.has(chave)) mapa.set(chave, t);
@@ -2319,15 +2354,39 @@ const UIController = {
 
       if (dados.configuracoes && typeof dados.configuracoes === 'object') {
         const cfg = dados.configuracoes;
-        if (cfg.metaDiaria > 0) StorageService.salvarValor(KEYS.META_DIARIA, Number(cfg.metaDiaria).toFixed(2));
-        if (cfg.metaSemanal > 0) StorageService.salvarValor(KEYS.META_SEMANAL, Number(cfg.metaSemanal).toFixed(2));
-        if (cfg.metaMensal > 0) StorageService.salvarValor(KEYS.META_MENSAL, Number(cfg.metaMensal).toFixed(2));
-        if (cfg.custoKm >= 0) StorageService.salvarValor(KEYS.CUSTO_KM, Number(cfg.custoKm));
-        if (cfg.consumoKmL > 0) StorageService.salvarValor(KEYS.CONSUMO_KML, Number(cfg.consumoKmL));
-        if (cfg.precoLitro > 0) StorageService.salvarValor(KEYS.PRECO_LITRO, Number(cfg.precoLitro));
-        if (cfg.kmProxOleo > 0) StorageService.salvarValor(KEYS.KM_PROX_OLEO, Math.round(Number(cfg.kmProxOleo)));
-        if (cfg.custoFixoMes >= 0) StorageService.salvarValor(KEYS.CUSTO_FIXO_MES, Number(cfg.custoFixoMes));
-        if (cfg.baixaManut >= 0) StorageService.salvarValor(KEYS.BAIXA_MANUT, Number(cfg.baixaManut).toFixed(2));
+        const numValido = (v, min, max) => {
+          const n = Number(v);
+          return Number.isFinite(n) && n >= min && n <= max ? n : null;
+        };
+
+        const mDia = numValido(cfg.metaDiaria, 1, 100000);
+        const mSem = numValido(cfg.metaSemanal, 1, 500000);
+        const mMes = numValido(cfg.metaMensal, 1, 2000000);
+        const cKm = numValido(cfg.custoKm, 0, 50);
+        const cKml = numValido(cfg.consumoKmL, 0.5, 100);
+        const pLitro = numValido(cfg.precoLitro, 0.1, 100);
+        const kOleo = numValido(cfg.kmProxOleo, 1, 9999999);
+        const cFixo = numValido(cfg.custoFixoMes, 0, 500000);
+        const bManut = numValido(cfg.baixaManut, 0, 1000000);
+
+        if (mDia !== null) StorageService.salvarValor(KEYS.META_DIARIA, mDia.toFixed(2));
+        if (mSem !== null) StorageService.salvarValor(KEYS.META_SEMANAL, mSem.toFixed(2));
+        if (mMes !== null) StorageService.salvarValor(KEYS.META_MENSAL, mMes.toFixed(2));
+        if (cKm !== null) {
+          StorageService.salvarValor(KEYS.CUSTO_KM, cKm);
+          document.getElementById('custoKm').value = cKm;
+        }
+        if (cKml !== null) {
+          StorageService.salvarValor(KEYS.CONSUMO_KML, cKml);
+          document.getElementById('consumoKmL').value = cKml;
+        }
+        if (pLitro !== null) {
+          StorageService.salvarValor(KEYS.PRECO_LITRO, pLitro);
+          document.getElementById('precoLitro').value = pLitro;
+        }
+        if (kOleo !== null) StorageService.salvarValor(KEYS.KM_PROX_OLEO, Math.round(kOleo));
+        if (cFixo !== null) StorageService.salvarValor(KEYS.CUSTO_FIXO_MES, cFixo);
+        if (bManut !== null) StorageService.salvarValor(KEYS.BAIXA_MANUT, bManut.toFixed(2));
       }
 
       StorageGuard.registrarBackupExterno(mesclados.length);
@@ -2352,6 +2411,10 @@ const UIController = {
     });
     if (!ok) return;
 
+    const atuais = StorageService.obterTurnos();
+    if (atuais.length > 0) {
+      await Cofre.criarPonto(`Antes de voltar para ponto de ${alvo.dataHora}`);
+    }
     StorageService.salvarTurnos(alvo.turnos);
     this.atualizarTudo();
     this.notificar('Turnos restaurados com sucesso!');

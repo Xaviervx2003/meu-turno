@@ -104,26 +104,53 @@ const StorageService = {
       return false;
     }
   },
+  sanitizarTurnoAtivo(d) {
+    if (!d || typeof d !== 'object') return null;
+    const num = (v, dec = 2) => {
+      const n = parseFloat(v);
+      return Number.isFinite(n) && n >= 0 ? Number(n.toFixed(dec)) : 0;
+    };
+    const inicioMs = parseInt(d.inicioMs, 10);
+    if (!Number.isFinite(inicioMs) || inicioMs <= 0) return null;
+
+    const pausadoEmMs = d.pausadoEmMs ? parseInt(d.pausadoEmMs, 10) : null;
+
+    return {
+      inicioMs,
+      horaFormatada: String(d.horaFormatada || '').replace(/[^0-9:]/g, '').slice(0, 5) || '00:00',
+      kmInicial: num(d.kmInicial, 1),
+      pausadoEmMs: (Number.isFinite(pausadoEmMs) && pausadoEmMs > 0) ? pausadoEmMs : null,
+      horaPausa: d.horaPausa ? String(d.horaPausa).replace(/[^0-9:]/g, '').slice(0, 5) : undefined,
+      totalPausaMs: Math.max(0, parseInt(d.totalPausaMs, 10) || 0),
+      faturamentoParcial: num(d.faturamentoParcial, 2),
+      combustivel: num(d.combustivel, 2),
+      alimentacao: num(d.alimentacao, 2),
+      outrosGastos: num(d.outrosGastos, 2)
+    };
+  },
+
   obterTurnoAtivo() {
     try {
-      return JSON.parse(localStorage.getItem(KEYS.TURNO_ATIVO) || 'null');
+      const bruto = JSON.parse(localStorage.getItem(KEYS.TURNO_ATIVO) || 'null');
+      return this.sanitizarTurnoAtivo(bruto);
     } catch {
       return null;
     }
   },
   salvarTurnoAtivo(dados) {
     try {
-      if (!dados) {
+      const limpo = this.sanitizarTurnoAtivo(dados);
+      if (!limpo) {
         localStorage.removeItem(KEYS.TURNO_ATIVO);
       } else {
-        localStorage.setItem(KEYS.TURNO_ATIVO, JSON.stringify(dados));
+        localStorage.setItem(KEYS.TURNO_ATIVO, JSON.stringify(limpo));
       }
-      Cofre.espelharTurnoAtivo(dados);
+      Cofre.espelharTurnoAtivo(limpo);
     } catch {}
   },
   obterNumero(chave, padrao) {
     const val = parseFloat(localStorage.getItem(chave));
-    return isNaN(val) ? padrao : val;
+    return Number.isFinite(val) ? val : padrao;
   },
   salvarValor(chave, valor) {
     try {
@@ -254,8 +281,9 @@ const Cofre = {
           req.onsuccess = () => resolve(req.result?.valor || null);
           req.onerror = () => resolve(null);
         });
-        if (espelhoAtivo && typeof espelhoAtivo === 'object' && espelhoAtivo.inicioMs) {
-          localStorage.setItem(KEYS.TURNO_ATIVO, JSON.stringify(espelhoAtivo));
+        const ativoSanitizado = StorageService.sanitizarTurnoAtivo(espelhoAtivo);
+        if (ativoSanitizado) {
+          localStorage.setItem(KEYS.TURNO_ATIVO, JSON.stringify(ativoSanitizado));
         }
       }
 
@@ -360,11 +388,15 @@ const Rascunho = {
   restaurar() {
     try {
       const salvo = JSON.parse(localStorage.getItem(KEYS.RASCUNHO_FORM) || 'null');
-      if (!salvo) return;
+      if (!salvo || typeof salvo !== 'object') return;
       Object.entries(salvo).forEach(([id, valor]) => {
+        if (!this.CAMPOS.includes(id)) return;
         const el = document.getElementById(id);
-        if (el && valor !== undefined) el.value = valor;
+        if (el && valor !== undefined) el.value = String(valor).slice(0, 60);
       });
+      if (typeof UIController !== 'undefined') {
+        UIController.combustivelManual = Boolean(salvo.combustivel && parseFloat(salvo.combustivel) > 0);
+      }
     } catch {}
   },
 
@@ -374,6 +406,9 @@ const Rascunho = {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
+    if (typeof UIController !== 'undefined') {
+      UIController.combustivelManual = false;
+    }
   }
 };
 

@@ -78,21 +78,21 @@ Para **nunca ficar bagunçado** ou poluído visualmente, a interface segue rigor
 
 ---
 
-## 4. Arquitetura Modular Atual & Repositório (`meu-turno-v17`)
+## 4. Arquitetura Modular Atual & Repositório (`meu-turno-v18`)
 
 - **Diretório Local:** `C:\Users\direcao\.gemini\antigravity\scratch\meu-turno`
 - **Repositório GitHub Pages:** `https://github.com/Xaviervx2003/meu-turno.git` (branch `main` → `https://xaviervx2003.github.io/meu-turno/`)
 - **Estrutura de Arquivos:**
   - `index.html`: Estrutura semântica enxuta das 3 abas (`#tab-painel`, `#tab-fechar`, `#tab-historico`) + Bottom Sheet (`#sheet`) + tags `<meta name="color-scheme" content="dark">` e `enterkeyhint`.
-  - `css/styles.css`: Design System **Uber Base UI Dark OLED**, `color-scheme: dark;` nativo, blocos padronizados `.kpi-tile` / `.kpi-row` / `.kpi-row-2`, `.sheet` com `max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain;`, gráfico interativo e responsividade para `360px`.
+  - `css/styles.css`: Design System **Uber Base UI Dark OLED**, `color-scheme: dark;` nativo, blocos padronizados `.kpi-tile` / `.kpi-row` / `.kpi-row-2`, `.quick-expense-grid` (grade 2x2 ergonômica), `.sheet` com `max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain;`, gráfico interativo e responsividade para `360px`.
   - `icon.svg`, `icon-192.png`, `icon-512.png`: Ícones vetoriais e rasterizados de alta resolução padrão Google Play / WebAPK.
   - `manifest.json`: Web App Manifest com `"id"`, `"categories"`, ícones PNG `192x192` e `512x512` (any e maskable) e `shortcuts` de acesso rápido.
-  - `js/storage.js`: `KEYS`, `DEFAULTS`, `StorageService` (com sanitização XSS `escaparHTML` e validação de schema `sanitizarTurno`), `Cofre` (espelhamento automático de turnos e configurações em IndexedDB + pontos de restauração), `Rascunho` e `StorageGuard`.
+  - `js/storage.js`: `KEYS`, `DEFAULTS`, `StorageService` (com sanitização XSS `escaparHTML` e validação de schema `sanitizarTurno` e `sanitizarTurnoAtivo`), `Cofre` (espelhamento automático de turnos e configurações em IndexedDB + pontos de restauração), `Rascunho` e `StorageGuard`.
   - `js/calendar.js`: `CalendarEngine` (cálculo de Semanas do Ano ISO `01–52/53` no ciclo Segunda a Domingo, navegação por offset e agrupamento semanal/mensal).
   - `js/finance.js`: `FinanceEngine` (fórmulas financeiras, avaliação de rentabilidade, `resumirLista`, Modo Privacidade `ocultarValores`, formatação `moeda`, `moedaCurta`, `numeroBR`).
   - `js/sheet.js`: `Sheet` (Bottom Sheet nativo estilo Uber com histórico `popstate`, Focus Trap `Tab` e retorno automático de foco).
-  - `js/ui.js`: `UIController` (Turno ao Vivo com Ganhos Parciais e Pausa Almoço, `AndroidWakeLock` veicular, histórico Android Back Button, dispatch de atalhos URL, compartilhamento nativo `navigator.share`, Modo Privacidade `👁️/🙈`, Gráfico Adaptativo por Dia/Semana/Mês, Raio-X por App Uber/99/Pix, Meta Diária/Semanal/Mensal com projeção, Caixa de Manutenção acumulado, Simulador de Corrida e Histórico com Backup JSON/CSV).
-  - `sw.js`: Service Worker `meu-turno-v17` **Network-First com fallback Offline** com cache de assets completos incluindo PNGs.
+  - `js/ui.js`: `UIController` (Turno ao Vivo com 4 botões rápidos incluindo `+ Outros`, Ganhos Parciais e Pausa Almoço, proteção de combustível manual vs. KM/L, reconciliação automática do Raio-X por App, suporte a turnos "corujão" que viram a meia-noite, `AndroidWakeLock` veicular, histórico Android Back Button, dispatch de atalhos URL, compartilhamento nativo `navigator.share`, Modo Privacidade `👁️/🙈`, Gráfico Adaptativo por Dia/Semana/Mês, Meta Diária/Semanal/Mensal com projeção, Caixa de Manutenção acumulado, Simulador de Corrida e Histórico com Backup JSON/CSV).
+  - `sw.js`: Service Worker `meu-turno-v18` **Network-First com fallback Offline** com cache de assets completos incluindo PNGs.
 
 ### 4.1. Próxima Funcionalidade Planejada: Leitor Automático de Notas Fiscais (NFC-e SEFAZ-AM)
 - Leitura via QR Code (câmera) ou link da **SEFAZ-AM** (`https://sistemas.sefaz.am.gov.br/nfceweb/consultarNFCe.do?acao=submitConsultaNFCeRedirect&txtChaveAcessoNFe=...&hash=...`).
@@ -155,3 +155,20 @@ Para **nunca ficar bagunçado** ou poluído visualmente, a interface segue rigor
 6. **Screen Wake Lock API Veicular (`navigator.wakeLock`):**
    - Módulo `AndroidWakeLock` que solicita a trava de tela (`screen`) enquanto o turno estiver em andamento na pista ou durante o uso do simulador de corrida com o celular fixado no suporte veicular, impedindo que a tela apague ou bloqueie durante o trabalho.
    - Reativação inteligente da trava ao alternar entre aplicativos através do evento `visibilitychange`.
+
+---
+
+## 7. Melhorias de Funcionalidades & Hardening de Segurança (`v18`)
+
+1. **Proteção do Abastecimento Real vs. Estimativa KM/L + Botão `+ Outros` no Turno ao Vivo:**
+   - Adicionado o 4º botão rápido **`🅿️ + Outros`** (Pedágio / Lavagem / Estacionamento) na grade 2x2 (`.quick-expense-grid`) do card de Turno ao Vivo.
+   - Trava inteligente `combustivelManual`: quando o motorista lança um abastecimento real na rua (ou digita o valor direto em `#combustivel`), digitar o `KM Final` no fechamento não sobrescreve o valor real pago na bomba pela estimativa matemática de `KM/L` (que só recalcula se o campo estiver vazio ou se o usuário editar diretamente os parâmetros na gaveta `Calc. KM/L`).
+2. **Reconciliação do Raio-X por App & Suporte a Turnos "Corujão" (Virada de Meia-Noite):**
+   - `somarApps()` atualiza ou limpa `#faturamento` dinamicamente, e `salvarFechamento()` reconcilia automaticamente divergências entre a soma dos apps (`ganhoUber + ganho99 + ganhoOutros`) e o `faturamento` total para manter o card Raio-X por App 100% consistente.
+   - `prepararEncerramentoTurno()` define `#dataTurno` automaticamente com base na data real de início do turno (`ativo.inicioMs`), garantindo que turnos iniciados à noite e encerrados de madrugada fiquem registrados no dia correto.
+3. **Sanitização Estrita de Schema no `TurnoAtivo` e `Rascunho` (`StorageService.sanitizarTurnoAtivo`):**
+   - Toda leitura e gravação de `meu_turno_ativo` (no `localStorage` e na auto-recuperação do `IndexedDB`) passa por `sanitizarTurnoAtivo()`, garantindo que `inicioMs`, `kmInicial`, `totalPausaMs`, `faturamentoParcial`, `combustivel`, `alimentacao` e `outrosGastos` sejam números finitos válidos (`Number.isFinite`), prevenindo falhas fatais de renderização (`TypeError`).
+   - `Rascunho.restaurar()` valida a whitelist `this.CAMPOS` e trunca strings a `60` caracteres.
+4. **Hardening na Importação de Backup JSON e Restauração de Pontos (`importarBackupArquivo` / `restaurarPonto`):**
+   - Todas as configurações importadas (`dados.configuracoes`) passam por validação `Number.isFinite` com limites operacionais seguros (bloqueando `Infinity`, `NaN` ou valores extremos).
+   - Na mesclagem de backup (`[...atuais, ...listaImportada]`), os registros já editados no aparelho atual têm prioridade sobre cópias antigas de mesmo `id`, e `restaurarPonto()` cria automaticamente um snapshot prévio no `Cofre` antes de reverter.
