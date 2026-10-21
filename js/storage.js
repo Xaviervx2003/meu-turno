@@ -14,7 +14,8 @@ const KEYS = {
   ULTIMO_BACKUP: 'meu_turno_ultimo_backup',
   KM_PROX_OLEO: 'meu_turno_km_prox_oleo',
   CUSTO_FIXO_MES: 'meu_turno_custo_fixo_mes',
-  BAIXA_MANUT: 'meu_turno_baixa_manut'
+  BAIXA_MANUT: 'meu_turno_baixa_manut',
+  MODO_PRIVACIDADE: 'meu_turno_privacidade'
 };
 
 const DEFAULTS = {
@@ -25,19 +26,76 @@ const DEFAULTS = {
 };
 
 const StorageService = {
+  escaparHTML(str) {
+    return String(str ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  },
+
+  sanitizarTurno(t, idx = 0) {
+    if (!t || typeof t !== 'object') return null;
+    const num = (v, dec = 2) => {
+      const n = parseFloat(v);
+      return Number.isFinite(n) ? Number(n.toFixed(dec)) : 0;
+    };
+    const idBruto = t.id ? String(t.id) : `legacy_${idx}_${t.data || ''}`;
+    const idLimpo = idBruto.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 48) || `legacy_${idx}`;
+    const dataLimpa = String(t.data || '').replace(/[^0-9/]/g, '').slice(0, 10);
+    const dataISOLimpa = String(t.dataISO || '').replace(/[^0-9-]/g, '').slice(0, 10);
+    const tagsLimpas = Array.isArray(t.tags)
+      ? t.tags.slice(0, 10).map(tg => String(tg || '').trim().slice(0, 30)).filter(Boolean)
+      : [];
+    const obsLimpa = String(t.obs || '').trim().slice(0, 60);
+
+    return {
+      ...t,
+      id: idLimpo,
+      data: dataLimpa || new Date().toLocaleDateString('pt-BR'),
+      dataISO: dataISOLimpa,
+      kmInicial: num(t.kmInicial, 1),
+      kmFinal: num(t.kmFinal, 1),
+      kmTotal: Math.max(0, num(t.kmTotal, 1)),
+      horas: Math.max(0, num(t.horas, 1)),
+      corridas: Math.max(0, Math.round(num(t.corridas, 0))),
+      ganhoUber: Math.max(0, num(t.ganhoUber, 2)),
+      ganho99: Math.max(0, num(t.ganho99, 2)),
+      ganhoOutros: Math.max(0, num(t.ganhoOutros, 2)),
+      faturamento: Math.max(0, num(t.faturamento, 2)),
+      custosTotais: Math.max(0, num(t.custosTotais, 2)),
+      combustivel: Math.max(0, num(t.combustivel, 2)),
+      alimentacao: Math.max(0, num(t.alimentacao, 2)),
+      diariaCarro: Math.max(0, num(t.diariaCarro, 2)),
+      outrosGastos: Math.max(0, num(t.outrosGastos, 2)),
+      provisaoManut: Math.max(0, num(t.provisaoManut, 2)),
+      lucroLiquido: num(t.lucroLiquido, 2).toFixed(2),
+      brutoKm: num(t.brutoKm, 2).toFixed(2),
+      liquidoKm: num(t.liquidoKm, 2).toFixed(2),
+      liquidoHora: num(t.liquidoHora, 2).toFixed(2),
+      ticketMedio: num(t.ticketMedio, 2).toFixed(2),
+      tags: tagsLimpas,
+      obs: obsLimpa
+    };
+  },
+
   obterTurnos() {
     try {
       const lista = JSON.parse(localStorage.getItem(KEYS.TURNOS) || '[]');
       if (!Array.isArray(lista)) return [];
-      return lista.map((t, idx) => (t && t.id ? t : { ...t, id: `legacy_${idx}_${t?.data || ''}` }));
+      return lista.map((t, idx) => this.sanitizarTurno(t, idx)).filter(Boolean);
     } catch {
       return [];
     }
   },
   salvarTurnos(lista) {
     try {
-      localStorage.setItem(KEYS.TURNOS, JSON.stringify(lista));
-      Cofre.espelharTurnos(lista);
+      const limpa = Array.isArray(lista)
+        ? lista.map((t, idx) => this.sanitizarTurno(t, idx)).filter(Boolean)
+        : [];
+      localStorage.setItem(KEYS.TURNOS, JSON.stringify(limpa));
+      Cofre.espelharTurnos(limpa);
       return true;
     } catch {
       if (typeof UIController !== 'undefined') {
@@ -70,6 +128,7 @@ const StorageService = {
   salvarValor(chave, valor) {
     try {
       localStorage.setItem(chave, String(valor));
+      Cofre.espelharConfigs();
     } catch {}
   }
 };
@@ -134,6 +193,30 @@ const Cofre = {
     } catch {}
   },
 
+  async espelharConfigs() {
+    const db = await this.abrirDB();
+    if (!db) return;
+    try {
+      const chavesConfig = [
+        KEYS.META_DIARIA, KEYS.META_SEMANAL, KEYS.META_MENSAL,
+        KEYS.CUSTO_KM, KEYS.CONSUMO_KML, KEYS.PRECO_LITRO,
+        KEYS.KM_PROX_OLEO, KEYS.CUSTO_FIXO_MES, KEYS.BAIXA_MANUT,
+        KEYS.ULTIMO_BACKUP, KEYS.MODO_PRIVACIDADE
+      ];
+      const mapa = {};
+      chavesConfig.forEach(k => {
+        const v = localStorage.getItem(k);
+        if (v !== null) mapa[k] = v;
+      });
+      const tx = db.transaction('espelho', 'readwrite');
+      tx.objectStore('espelho').put({
+        chave: 'meu_turno_configs',
+        valor: mapa,
+        atualizadoEm: Date.now()
+      });
+    } catch {}
+  },
+
   async verificarAutoRecuperacao() {
     const db = await this.abrirDB();
     if (!db) return false;
@@ -145,6 +228,23 @@ const Cofre = {
         req.onsuccess = () => resolve(req.result?.valor || []);
         req.onerror = () => resolve([]);
       });
+
+      const espelhoConfigs = await new Promise((resolve) => {
+        const tx = db.transaction('espelho', 'readonly');
+        const req = tx.objectStore('espelho').get('meu_turno_configs');
+        req.onsuccess = () => resolve(req.result?.valor || null);
+        req.onerror = () => resolve(null);
+      });
+
+      if (espelhoConfigs && typeof espelhoConfigs === 'object') {
+        Object.entries(espelhoConfigs).forEach(([k, v]) => {
+          if (localStorage.getItem(k) === null && v !== undefined) {
+            localStorage.setItem(k, String(v));
+          }
+        });
+      } else {
+        await this.espelharConfigs();
+      }
 
       if (turnosLocal.length === 0 && Array.isArray(espelhoTurnos) && espelhoTurnos.length > 0) {
         localStorage.setItem(KEYS.TURNOS, JSON.stringify(espelhoTurnos));

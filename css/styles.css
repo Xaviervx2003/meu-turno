@@ -48,6 +48,26 @@
   font-variant-numeric: tabular-nums;
 }
 
+button, input, select, .clickable, .activity-item {
+  touch-action: manipulation;
+}
+
+button:focus-visible,
+.activity-item:focus-visible,
+.clickable:focus-visible {
+  outline: 2px solid var(--uber-blue);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 body {
   background: var(--uber-black);
   color: var(--uber-white);
@@ -156,13 +176,15 @@ body {
   justify-self: center;
   background: var(--uber-surface);
   border: 1px solid var(--uber-border);
-  padding: 8px 18px;
+  padding: 8px 14px;
   border-radius: var(--radius-pill);
   display: flex;
   align-items: center;
   gap: 6px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.65);
   cursor: pointer;
+  color: var(--uber-white);
+  white-space: nowrap;
 }
 .earnings-pill span {
   font-size: 0.76rem;
@@ -170,9 +192,14 @@ body {
   font-weight: 700;
 }
 .earnings-pill strong {
-  font-size: 1.08rem;
+  font-size: 1.06rem;
   font-weight: 900;
   color: var(--uber-green);
+}
+.privacy-eye {
+  font-size: 0.82rem;
+  opacity: 0.78;
+  line-height: 1;
 }
 
 .topbar-right {
@@ -417,6 +444,9 @@ body {
   border-radius: var(--radius-md);
   padding: 10px 10px;
   min-width: 0;
+  width: 100%;
+  text-align: left;
+  color: var(--uber-white);
 }
 .kpi-tile span {
   display: block;
@@ -1015,8 +1045,11 @@ input:focus, select.uber-select:focus {
   outline: none;
   background: #262626;
 }
+input.input-error {
+  border-color: var(--uber-red);
+}
 input::placeholder {
-  color: #595959;
+  color: #8A8A8A;
   font-weight: 500;
 }
 
@@ -1118,6 +1151,9 @@ input::placeholder {
   background: var(--uber-surface-elevated);
   color: var(--uber-muted);
   border: 1px solid var(--uber-border);
+}
+button.status-badge {
+  cursor: pointer;
 }
 .status-good { background: var(--uber-green-soft); color: var(--uber-green); border-color: transparent; }
 .status-warn { background: var(--uber-yellow-soft); color: var(--uber-yellow); border-color: transparent; }

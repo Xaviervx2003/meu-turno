@@ -2,7 +2,9 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self';">
+  <meta name="referrer" content="no-referrer">
   <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -10,23 +12,24 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
-  <link rel="stylesheet" href="./css/styles.css?v=14">
+  <link rel="stylesheet" href="./css/styles.css?v=15">
   <title>Meu Turno — Driver</title>
 </head>
 <body>
 
 <div class="app-shell">
-  <!-- TOP BAR SIMÉTRICA 3 COLUNAS COM PÍLULA CENTRAL DE GANHOS -->
+  <!-- TOP BAR SIMÉTRICA 3 COLUNAS COM PÍLULA CENTRAL DE GANHOS E MODO PRIVACIDADE -->
   <header class="uber-topbar">
-    <div class="status-dot-wrap">
-      <span id="topStatusDot" class="status-dot"></span>
+    <div class="status-dot-wrap" role="status" aria-live="polite">
+      <span id="topStatusDot" class="status-dot" aria-hidden="true"></span>
       <span id="topStatusText">Offline</span>
     </div>
 
-    <div class="earnings-pill" onclick="UIController.navegarAba('painel')" title="Lucro Líquido de Hoje">
+    <button id="btnPillPrivacidade" type="button" class="earnings-pill" onclick="UIController.alternarPrivacidade()" aria-pressed="false" title="Toque para ocultar ou mostrar valores (Modo Privacidade)">
       <span>Hoje</span>
       <strong id="pillLucroHoje">R$ 0,00</strong>
-    </div>
+      <span id="iconePrivacidade" class="privacy-eye" aria-hidden="true">👁️</span>
+    </button>
 
     <div class="topbar-right">
       <button id="badgeSemanaTopo" type="button" class="week-top-badge" onclick="UIController.abrirResumoSemanaRapido()" title="Ver Semana Atual">S--</button>
@@ -43,11 +46,11 @@
 
     <!-- Card Principal de Ganhos (Estilo Uber Earnings) -->
     <div class="uber-card">
-      <div class="uber-segmented">
-        <button id="seg-hoje" class="seg-btn active" onclick="UIController.mudarPeriodo('hoje', this)">Hoje</button>
-        <button id="seg-7dias" class="seg-btn" onclick="UIController.mudarPeriodo('7dias', this)">Semana</button>
-        <button id="seg-mes" class="seg-btn" onclick="UIController.mudarPeriodo('mes', this)">Mês</button>
-        <button id="seg-tudo" class="seg-btn" onclick="UIController.mudarPeriodo('tudo', this)">Total</button>
+      <div class="uber-segmented" role="group" aria-label="Período de visualização">
+        <button id="seg-hoje" type="button" class="seg-btn active" aria-pressed="true" onclick="UIController.mudarPeriodo('hoje', this)">Hoje</button>
+        <button id="seg-7dias" type="button" class="seg-btn" aria-pressed="false" onclick="UIController.mudarPeriodo('7dias', this)">Semana</button>
+        <button id="seg-mes" type="button" class="seg-btn" aria-pressed="false" onclick="UIController.mudarPeriodo('mes', this)">Mês</button>
+        <button id="seg-tudo" type="button" class="seg-btn" aria-pressed="false" onclick="UIController.mudarPeriodo('tudo', this)">Total</button>
       </div>
 
       <!-- Navegador de Semana do Ano (Semana 01 a 52) e Mês -->
@@ -96,7 +99,7 @@
             <span class="legend-item"><i class="legend-dash"></i><span id="legendaMetaValor">Meta</span></span>
           </div>
         </div>
-        <div id="grafico7Dias" class="uber-chart" role="group" aria-label="Lucro líquido por dia"></div>
+        <div id="grafico7Dias" class="uber-chart" role="group" aria-label="Lucro líquido por período"></div>
         <div id="rodapeGrafico" class="chart-footer" aria-live="polite"></div>
       </div>
 
@@ -107,10 +110,10 @@
     <!-- Card Unificado de Metas (Alternância Limpa entre Hoje, Semana e Mês) -->
     <div class="uber-card">
       <div class="card-header-row compact">
-        <div class="goal-header-tabs">
-          <button id="btnAbaMetaDia" type="button" class="goal-tab-btn active" onclick="UIController.alternarAbaMeta('dia')">🎯 Hoje</button>
-          <button id="btnAbaMetaSemana" type="button" class="goal-tab-btn" onclick="UIController.alternarAbaMeta('semana')">📅 Semana</button>
-          <button id="btnAbaMetaMes" type="button" class="goal-tab-btn" onclick="UIController.alternarAbaMeta('mes')">🗓️ Mês</button>
+        <div class="goal-header-tabs" role="group" aria-label="Tipo de meta">
+          <button id="btnAbaMetaDia" type="button" class="goal-tab-btn active" aria-pressed="true" onclick="UIController.alternarAbaMeta('dia')">🎯 Hoje</button>
+          <button id="btnAbaMetaSemana" type="button" class="goal-tab-btn" aria-pressed="false" onclick="UIController.alternarAbaMeta('semana')">📅 Semana</button>
+          <button id="btnAbaMetaMes" type="button" class="goal-tab-btn" aria-pressed="false" onclick="UIController.alternarAbaMeta('mes')">🗓️ Mês</button>
         </div>
         <button id="btnEditarMetaUnificada" type="button" class="chip-btn" onclick="UIController.editarMetaAtiva()">Editar</button>
       </div>
@@ -128,7 +131,7 @@
     <div class="uber-card">
       <div class="card-header-row compact">
         <h2 class="card-title">⚡ Ferramentas de Pista</h2>
-        <span id="badgeOleoStatus" class="status-badge status-good" onclick="UIController.configurarTrocaOleo()">🔧 Óleo OK</span>
+        <button id="badgeOleoStatus" type="button" class="status-badge status-good" onclick="UIController.configurarTrocaOleo()">🔧 Óleo OK</button>
       </div>
 
       <!-- KPIs Padronizados: Cofre de Reserva de Manutenção e Próxima Troca de Óleo -->
@@ -155,19 +158,19 @@
         </div>
         <div class="grid-3">
           <div>
-            <label>Valor (R$)</label>
+            <label for="simValor">Valor (R$)</label>
             <input type="number" id="simValor" step="0.5" inputmode="decimal" placeholder="Ex: 18" oninput="UIController.simularCorrida()">
           </div>
           <div>
-            <label>KM c/ Busca</label>
+            <label for="simKm">KM c/ Busca</label>
             <input type="number" id="simKm" step="0.5" inputmode="decimal" placeholder="Ex: 9.5" oninput="UIController.simularCorrida()">
           </div>
           <div>
-            <label>Tempo (min)</label>
+            <label for="simMin">Tempo (min)</label>
             <input type="number" id="simMin" inputmode="numeric" placeholder="Ex: 20" oninput="UIController.simularCorrida()">
           </div>
         </div>
-        <div id="resultadoSimulador" class="text-helper">
+        <div id="resultadoSimulador" class="text-helper" aria-live="polite">
           Digite o valor e os KMs totais da chamada para ver o lucro real.
         </div>
       </div>
@@ -197,33 +200,33 @@
 
       <div class="grid-2">
         <div>
-          <label>Data</label>
+          <label for="dataTurno">Data</label>
           <input type="date" id="dataTurno">
         </div>
         <div>
-          <label>Horas na Pista</label>
+          <label for="horasTrabalhadas">Horas na Pista</label>
           <input type="number" id="horasTrabalhadas" step="0.5" inputmode="decimal" placeholder="Ex: 8.5">
         </div>
       </div>
 
       <div class="grid-2">
         <div>
-          <label>KM Inicial</label>
+          <label for="kmInicial">KM Inicial</label>
           <input type="number" id="kmInicial" inputmode="numeric" placeholder="Ex: 45200" oninput="UIController.aoMudarOdometro()">
         </div>
         <div>
-          <label>KM Final</label>
+          <label for="kmFinal">KM Final</label>
           <input type="number" id="kmFinal" inputmode="numeric" placeholder="Ex: 45380" oninput="UIController.aoMudarOdometro()">
         </div>
       </div>
 
       <div class="grid-2">
         <div>
-          <label>KM Rodado</label>
+          <label for="kmTotalInput">KM Rodado</label>
           <input type="number" id="kmTotalInput" inputmode="numeric" placeholder="Ou digite direto" oninput="UIController.calcularCombustivelPorConsumo()">
         </div>
         <div>
-          <label>Nº de Corridas</label>
+          <label for="corridas">Nº de Corridas</label>
           <input type="number" id="corridas" inputmode="numeric" placeholder="Ex: 18">
         </div>
       </div>
@@ -239,22 +242,22 @@
       <div id="painelApps" class="collapsible-panel">
         <div class="grid-3">
           <div>
-            <label>Uber (R$)</label>
+            <label for="ganhoUber">Uber (R$)</label>
             <input type="number" id="ganhoUber" step="0.01" inputmode="decimal" placeholder="0,00" oninput="UIController.somarApps()">
           </div>
           <div>
-            <label>99 (R$)</label>
+            <label for="ganho99">99 (R$)</label>
             <input type="number" id="ganho99" step="0.01" inputmode="decimal" placeholder="0,00" oninput="UIController.somarApps()">
           </div>
           <div>
-            <label>Pix/Outros</label>
+            <label for="ganhoOutros">Pix/Outros</label>
             <input type="number" id="ganhoOutros" step="0.01" inputmode="decimal" placeholder="0,00" oninput="UIController.somarApps()">
           </div>
         </div>
       </div>
 
       <div>
-        <label>Total Bruto Recebido no Dia (R$)</label>
+        <label for="faturamento">Total Bruto Recebido no Dia (R$)</label>
         <input type="number" id="faturamento" step="0.01" inputmode="decimal" placeholder="Ex: 350,00">
       </div>
     </div>
@@ -269,11 +272,11 @@
       <div id="painelCalcComb" class="collapsible-panel">
         <div class="grid-2">
           <div>
-            <label>Consumo (KM/L)</label>
+            <label for="consumoKmL">Consumo (KM/L)</label>
             <input type="number" id="consumoKmL" step="0.1" inputmode="decimal" placeholder="Ex: 10.5" oninput="UIController.calcularCombustivelPorConsumo()">
           </div>
           <div>
-            <label>Preço Litro (R$)</label>
+            <label for="precoLitro">Preço Litro (R$)</label>
             <input type="number" id="precoLitro" step="0.01" inputmode="decimal" placeholder="Ex: 5.89" oninput="UIController.calcularCombustivelPorConsumo()">
           </div>
         </div>
@@ -281,28 +284,28 @@
 
       <div class="grid-2">
         <div>
-          <label>Combustível (R$)</label>
+          <label for="combustivel">Combustível (R$)</label>
           <input type="number" id="combustivel" step="0.01" inputmode="decimal" placeholder="0,00">
         </div>
         <div>
-          <label>Alimentação (R$)</label>
+          <label for="alimentacao">Alimentação (R$)</label>
           <input type="number" id="alimentacao" step="0.01" inputmode="decimal" placeholder="0,00">
         </div>
       </div>
 
       <div class="grid-2">
         <div>
-          <label>Aluguel / Diária (R$)</label>
+          <label for="diariaCarro">Aluguel / Diária (R$)</label>
           <input type="number" id="diariaCarro" step="0.01" inputmode="decimal" placeholder="0,00">
         </div>
         <div>
-          <label>Outros Gastos (R$)</label>
+          <label for="outrosGastos">Outros Gastos (R$)</label>
           <input type="number" id="outrosGastos" step="0.01" inputmode="decimal" placeholder="0,00">
         </div>
       </div>
 
       <div>
-        <label>
+        <label for="custoKm">
           <span>Reserva Manutenção / KM</span>
           <span class="label-hint">Pneus, óleo, freios</span>
         </label>
@@ -310,26 +313,26 @@
       </div>
 
       <div>
-        <label>
+        <label for="obsTurno">
           <span>Tags e Nota do Dia</span>
           <span class="label-hint">Opcional</span>
         </label>
-        <div id="listaTagsTurno" class="shift-tags-row">
-          <button type="button" class="tag-pill" data-tag="🌧️ Chuva" onclick="UIController.alternarTagTurno('🌧️ Chuva')">🌧️ Chuva</button>
-          <button type="button" class="tag-pill" data-tag="⚡ Dinâmico" onclick="UIController.alternarTagTurno('⚡ Dinâmico')">⚡ Dinâmico</button>
-          <button type="button" class="tag-pill" data-tag="🎉 Evento" onclick="UIController.alternarTagTurno('🎉 Evento')">🎉 Evento</button>
-          <button type="button" class="tag-pill" data-tag="🔧 Oficina" onclick="UIController.alternarTagTurno('🔧 Oficina')">🔧 Oficina</button>
-          <button type="button" class="tag-pill" data-tag="🛣️ Viagem" onclick="UIController.alternarTagTurno('🛣️ Viagem')">🛣️ Viagem</button>
+        <div id="listaTagsTurno" class="shift-tags-row" role="group" aria-label="Tags rápidas do turno">
+          <button type="button" class="tag-pill" data-tag="🌧️ Chuva" aria-pressed="false" onclick="UIController.alternarTagTurno('🌧️ Chuva')">🌧️ Chuva</button>
+          <button type="button" class="tag-pill" data-tag="⚡ Dinâmico" aria-pressed="false" onclick="UIController.alternarTagTurno('⚡ Dinâmico')">⚡ Dinâmico</button>
+          <button type="button" class="tag-pill" data-tag="🎉 Evento" aria-pressed="false" onclick="UIController.alternarTagTurno('🎉 Evento')">🎉 Evento</button>
+          <button type="button" class="tag-pill" data-tag="🔧 Oficina" aria-pressed="false" onclick="UIController.alternarTagTurno('🔧 Oficina')">🔧 Oficina</button>
+          <button type="button" class="tag-pill" data-tag="🛣️ Viagem" aria-pressed="false" onclick="UIController.alternarTagTurno('🛣️ Viagem')">🛣️ Viagem</button>
         </div>
         <input type="text" id="obsTurno" maxlength="60" placeholder="Ex: Aeroporto movimentado / Chuva à tarde">
       </div>
 
-      <button class="btn-uber-green" onclick="UIController.salvarFechamento()">
+      <button type="button" class="btn-uber-green" onclick="UIController.salvarFechamento()">
         Concluir e Salvar Fechamento
       </button>
 
       <!-- Recibo de Resultado -->
-      <div id="boxResultado" class="receipt-box"></div>
+      <div id="boxResultado" class="receipt-box" aria-live="polite"></div>
     </div>
   </section>
 
@@ -353,7 +356,7 @@
           📥 Abrir Backup
         </button>
       </div>
-      <input type="file" id="inputImportarBackup" class="hidden" accept=".json,application/json" onchange="UIController.importarBackupArquivo(event)">
+      <input type="file" id="inputImportarBackup" class="hidden" accept=".json,application/json" aria-label="Importar arquivo de backup JSON" onchange="UIController.importarBackupArquivo(event)">
 
       <div class="grid-2 mt-8">
         <button type="button" class="btn-sub-action" onclick="UIController.togglePainel('painelPontosRestauracao')">
@@ -376,13 +379,13 @@
       </div>
 
       <!-- Filtro Rápido por Semana do Ano / Mês -->
-      <select id="filtroSemanaHistorico" class="uber-select" onchange="UIController.filtrarHistoricoPorCiclo(this.value)">
+      <select id="filtroSemanaHistorico" class="uber-select" aria-label="Filtrar histórico por semana ou mês" onchange="UIController.filtrarHistoricoPorCiclo(this.value)">
         <option value="todos">📋 Todas as Semanas</option>
       </select>
 
       <div id="listaHistorico"></div>
 
-      <button class="btn-uber-ghost danger-outline" onclick="UIController.limparTodoHistorico()">
+      <button type="button" class="btn-uber-ghost danger-outline" onclick="UIController.limparTodoHistorico()">
         Apagar Todo o Histórico do Celular
       </button>
     </div>
@@ -390,29 +393,29 @@
 </div>
 
 <!-- BARRA DE NAVEGAÇÃO INFERIOR ESTILO UBER DRIVER -->
-<nav class="bottom-nav">
+<nav class="bottom-nav" aria-label="Navegação principal">
   <div class="bottom-nav-inner">
-    <button id="nav-painel" class="nav-item active" onclick="UIController.navegarAba('painel')">
-      <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+    <button id="nav-painel" type="button" class="nav-item active" aria-current="page" onclick="UIController.navegarAba('painel')">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
       <span>Início</span>
     </button>
-    <button id="nav-fechar" class="nav-item" onclick="UIController.navegarAba('fechar')">
-      <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+    <button id="nav-fechar" type="button" class="nav-item" onclick="UIController.navegarAba('fechar')">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
       <span>Fechar Dia</span>
     </button>
-    <button id="nav-historico" class="nav-item" onclick="UIController.navegarAba('historico')">
-      <svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+    <button id="nav-historico" type="button" class="nav-item" onclick="UIController.navegarAba('historico')">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
       <span>Atividade</span>
     </button>
   </div>
 </nav>
 
 <!-- BOTTOM SHEET (substitui prompt/confirm do navegador) -->
-<div id="sheetOverlay" class="sheet-overlay" onclick="Sheet.fechar(null)"></div>
-<div id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitulo">
-  <div class="sheet-handle"></div>
+<div id="sheetOverlay" class="sheet-overlay" onclick="Sheet.fechar(null)" aria-hidden="true"></div>
+<div id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitulo" aria-describedby="sheetSubtitulo">
+  <div class="sheet-handle" aria-hidden="true"></div>
   <div class="sheet-header">
-    <div id="sheetIcone" class="sheet-icone"></div>
+    <div id="sheetIcone" class="sheet-icone" aria-hidden="true"></div>
     <div>
       <h3 id="sheetTitulo" class="sheet-titulo"></h3>
       <p id="sheetSubtitulo" class="sheet-subtitulo"></p>
@@ -420,18 +423,18 @@
   </div>
   <div id="sheetCorpo"></div>
   <div class="sheet-actions">
-    <button id="sheetBtnOk" class="sheet-btn sheet-btn-primary" onclick="Sheet.confirmarOk()">Confirmar</button>
-    <button id="sheetBtnCancel" class="sheet-btn sheet-btn-ghost" onclick="Sheet.fechar(null)">Cancelar</button>
+    <button id="sheetBtnOk" type="button" class="sheet-btn sheet-btn-primary" onclick="Sheet.confirmarOk()">Confirmar</button>
+    <button id="sheetBtnCancel" type="button" class="sheet-btn sheet-btn-ghost" onclick="Sheet.fechar(null)">Cancelar</button>
   </div>
 </div>
 
-<div id="toast" class="uber-toast"></div>
+<div id="toast" class="uber-toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <!-- MÓDULOS JAVASCRIPT DO APP -->
-<script src="./js/storage.js?v=14"></script>
-<script src="./js/calendar.js?v=14"></script>
-<script src="./js/finance.js?v=14"></script>
-<script src="./js/sheet.js?v=14"></script>
-<script src="./js/ui.js?v=14"></script>
+<script src="./js/storage.js?v=15"></script>
+<script src="./js/calendar.js?v=15"></script>
+<script src="./js/finance.js?v=15"></script>
+<script src="./js/sheet.js?v=15"></script>
+<script src="./js/ui.js?v=15"></script>
 </body>
 </html>

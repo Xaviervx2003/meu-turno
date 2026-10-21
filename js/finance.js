@@ -2,10 +2,13 @@
    MÓDULO 3: FINANCE ENGINE (REGRAS DE NEGÓCIO, FÓRMULAS & FORMATAÇÃO PT-BR)
    ========================================================================== */
 const FinanceEngine = {
+  ocultarValores: false,
+
   /**
    * Formata número no padrão monetário brasileiro: R$ 1.420,50
    */
-  moeda(valor) {
+  moeda(valor, sempreVisivel = false) {
+    if (this.ocultarValores && !sempreVisivel) return 'R$ ••••';
     const num = Number(valor) || 0;
     const absFormatado = Math.abs(num).toLocaleString('pt-BR', {
       minimumFractionDigits: 2,
@@ -17,7 +20,8 @@ const FinanceEngine = {
   /**
    * Formata número em moeda sem centavos para espaços compactos: R$ 1.420
    */
-  moedaCurta(valor) {
+  moedaCurta(valor, sempreVisivel = false) {
+    if (this.ocultarValores && !sempreVisivel) return 'R$ ••••';
     const num = Math.round(Number(valor) || 0);
     const absFormatado = Math.abs(num).toLocaleString('pt-BR');
     return num < 0 ? `-R$ ${absFormatado}` : `R$ ${absFormatado}`;

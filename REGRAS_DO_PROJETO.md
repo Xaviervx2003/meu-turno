@@ -78,21 +78,51 @@ Para **nunca ficar bagunçado** ou poluído visualmente, a interface segue rigor
 
 ---
 
-## 4. Arquitetura Modular Atual & Repositório (`meu-turno-v14`)
+## 4. Arquitetura Modular Atual & Repositório (`meu-turno-v15`)
 
 - **Diretório Local:** `C:\Users\direcao\.gemini\antigravity\scratch\meu-turno`
 - **Repositório GitHub Pages:** `https://github.com/Xaviervx2003/meu-turno.git` (branch `main` → `https://xaviervx2003.github.io/meu-turno/`)
 - **Estrutura de Arquivos:**
   - `index.html`: Estrutura semântica enxuta das 3 abas (`#tab-painel`, `#tab-fechar`, `#tab-historico`) + Bottom Sheet (`#sheet`).
   - `css/styles.css`: Design System **Uber Base UI Dark OLED**, blocos padronizados `.kpi-tile` / `.kpi-row` / `.kpi-row-2`, gráfico interativo e responsividade garantida para telas de `360px`.
-  - `js/storage.js`: `KEYS`, `DEFAULTS`, `StorageService`, `Cofre` (espelhamento automático em IndexedDB + pontos de restauração), `Rascunho` e `StorageGuard`.
+  - `js/storage.js`: `KEYS`, `DEFAULTS`, `StorageService` (com sanitização XSS `escaparHTML` e validação de schema `sanitizarTurno`), `Cofre` (espelhamento automático de turnos e configurações em IndexedDB + pontos de restauração), `Rascunho` e `StorageGuard`.
   - `js/calendar.js`: `CalendarEngine` (cálculo de Semanas do Ano ISO `01–52/53` no ciclo Segunda a Domingo, navegação por offset e agrupamento semanal/mensal).
-  - `js/finance.js`: `FinanceEngine` (fórmulas financeiras, avaliação de rentabilidade, `resumirLista`, formatação `moeda`, `moedaCurta`, `numeroBR`).
-  - `js/sheet.js`: `Sheet` (Bottom Sheet nativo estilo Uber substituindo `prompt`/`confirm`).
-  - `js/ui.js`: `UIController` (Turno ao Vivo com Ganhos Parciais e Pausa Almoço, Gráfico Adaptativo por Dia/Semana/Mês, Raio-X por App Uber/99/Pix, Meta Diária/Semanal/Mensal com projeção, Caixa de Manutenção acumulado, Simulador de Corrida e Histórico com Backup JSON/CSV).
+  - `js/finance.js`: `FinanceEngine` (fórmulas financeiras, avaliação de rentabilidade, `resumirLista`, Modo Privacidade `ocultarValores`, formatação `moeda`, `moedaCurta`, `numeroBR`).
+  - `js/sheet.js`: `Sheet` (Bottom Sheet nativo estilo Uber substituindo `prompt`/`confirm`, com Focus Trap `Tab` e retorno automático de foco).
+  - `js/ui.js`: `UIController` (Turno ao Vivo com Ganhos Parciais e Pausa Almoço, Modo Privacidade `👁️/🙈`, Gráfico Adaptativo por Dia/Semana/Mês, Raio-X por App Uber/99/Pix, Meta Diária/Semanal/Mensal com projeção, Caixa de Manutenção acumulado, Simulador de Corrida e Histórico com Backup JSON/CSV).
   - `sw.js`: Service Worker **Network-First com fallback Offline**.
 
 ### 4.1. Próxima Funcionalidade Planejada: Leitor Automático de Notas Fiscais (NFC-e SEFAZ-AM)
 - Leitura via QR Code (câmera) ou link da **SEFAZ-AM** (`https://sistemas.sefaz.am.gov.br/nfceweb/consultarNFCe.do?acao=submitConsultaNFCeRedirect&txtChaveAcessoNFe=...&hash=...`).
 - O portal SEFAZ-AM utiliza sessão (`JSESSIONID`) no redirect inicial e renderiza os dados do cupom em `https://sistemas.sefaz.am.gov.br/nfceweb/jsp/consultanfce/resultadoConsultaNFCeResponsiva.jsp` (estabelecimento, CNPJ, endereço, itens com código/qtd/unidade/valor unitário/total, valor total pago, forma de pagamento e data/hora exata de emissão).
 - Ao ler a nota, o sistema preenche automaticamente a data da compra, o valor e categoriza os itens (ex: combustível/litros/preço por litro ou alimentação/compras).
+
+---
+
+## 5. Resumo de Segurança e Acessibilidade Veicular (`meu-turno-v15`)
+
+### 5.1. Melhorias de Segurança e Proteção de Dados
+1. **Modo Privacidade na Pista (`👁️` / `🙈` Ocultar Valores):**
+   - Toque rápido na pílula central da Topbar (`#btnPillPrivacidade`) oculta ou exibe instantaneamente todos os valores monetários da tela (`R$ ••••`), protegendo a privacidade do motorista quando há passageiros no carro ou em postos/oficinas.
+   - Os resumos copiados para o WhatsApp e os modais de lançamento continuam exibindo o valor real (`FinanceEngine.moeda(valor, true)`).
+2. **Blindagem contra XSS e Sanitização de Schema (`StorageService`):**
+   - `StorageService.escaparHTML()` protege todas as strings dinâmicas (`obs`, `tags`, `motivo` de restauração, datas e IDs) antes da renderização no DOM.
+   - `StorageService.sanitizarTurno()` valida tipos numéricos, remove `NaN`/`Infinity`, limita tamanho de strings e higieniza qualquer arquivo `.json` importado.
+   - Política `Content-Security-Policy` (CSP) e `Referrer-Policy: no-referrer` aplicadas no `<head>` de `index.html`.
+3. **Backup JSON v4 Completo + Cofre Duplo Integral (`IndexedDB`):**
+   - O pacote de exportação/importação `.json` e o espelhamento automático no `IndexedDB` (`Cofre.espelharConfigs()`) agora salvam e restauram 100% das configurações: `metaDiaria`, `metaSemanal`, `metaMensal`, `custoKm`, `consumoKmL`, `precoLitro`, `kmProxOleo`, `custoFixoMes` e `baixaManut`.
+4. **Trava de Consistência do Odômetro (`KM Final < KM Inicial`):**
+   - Destaque visual imediato (`.input-error`) e bloqueio no fechamento caso o motorista digite um `KM Final` menor que o `KM Inicial` por engano.
+
+### 5.2. Melhorias de Acessibilidade (WCAG AA) e Ergonomia Veicular
+5. **Zoom de Acessibilidade Desbloqueado + `touch-action: manipulation`:**
+   - Removido o bloqueio `user-scalable=no` / `maximum-scale=1.0` do `viewport`, permitindo pinça/zoom para motoristas com baixa visão, enquanto `touch-action: manipulation` evita zoom acidental ao tocar rápido nos botões.
+6. **Vínculo Semântico `<label for="...">` em 100% dos Formulários:**
+   - Todos os 19 campos de entrada possuem `<label for="...">` explícito e o filtro de histórico possui `aria-label`, permitindo foco ao tocar no rótulo e leitura completa via TalkBack (Android) e VoiceOver (iOS).
+7. **Alto Contraste sob Sol Forte (`4.5:1`), `:focus-visible` e `prefers-reduced-motion`:**
+   - Placeholders ajustados de `#595959` (`2.35:1`) para `#8A8A8A` (`4.5:1` WCAG AA sobre `#1F1F1F`).
+   - Anel de foco `:focus-visible` em azul Uber (`--uber-blue`) para navegação por teclado/botões físicos e suporte a `@media (prefers-reduced-motion: reduce)`.
+8. **Semântica ARIA Completa e Focus Trap no Bottom Sheet (`Sheet`):**
+   - KPIs clicáveis, pílula do topo e alerta de óleo convertidos em `<button type="button">` nativos; cards de histórico com `role="button"`, `tabindex="0"`, `aria-expanded` e suporte às teclas `Enter`/`Espaço`.
+   - `#toast` e status do turno configurados com `role="status" aria-live="polite"`.
+   - Modal `Sheet` prende o foco (`Tab` / `Shift+Tab`) enquanto aberto e devolve o foco ao botão de origem ao fechar.

@@ -36,11 +36,33 @@ const UIController = {
       this.notificar(`🛡️ ${recuperados} turno(s) recuperados automaticamente do Cofre!`);
     }
 
+    FinanceEngine.ocultarValores = localStorage.getItem(KEYS.MODO_PRIVACIDADE) === '1';
+    this.sincronizarIconePrivacidade();
+
     this.atualizarTudo();
 
     setInterval(() => {
       if (StorageService.obterTurnoAtivo() && !Sheet._resolver) this.renderizarTurnoVivo();
     }, 30000);
+  },
+
+  alternarPrivacidade() {
+    FinanceEngine.ocultarValores = !FinanceEngine.ocultarValores;
+    StorageService.salvarValor(KEYS.MODO_PRIVACIDADE, FinanceEngine.ocultarValores ? '1' : '0');
+    this.sincronizarIconePrivacidade();
+    this.atualizarTudo();
+    this.notificar(
+      FinanceEngine.ocultarValores
+        ? '🙈 Modo privacidade ativado (valores ocultos)'
+        : '👁️ Valores visíveis novamente'
+    );
+  },
+
+  sincronizarIconePrivacidade() {
+    const icone = document.getElementById('iconePrivacidade');
+    const pill = document.getElementById('btnPillPrivacidade');
+    if (icone) icone.textContent = FinanceEngine.ocultarValores ? '🙈' : '👁️';
+    if (pill) pill.setAttribute('aria-pressed', String(FinanceEngine.ocultarValores));
   },
 
   atualizarTudo() {
@@ -67,10 +89,17 @@ const UIController = {
 
   navegarAba(aba) {
     document.querySelectorAll('.tab-view').forEach(s => s.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(b => {
+      b.classList.remove('active');
+      b.removeAttribute('aria-current');
+    });
 
     document.getElementById(`tab-${aba}`).classList.add('active');
-    document.getElementById(`nav-${aba}`).classList.add('active');
+    const btnAba = document.getElementById(`nav-${aba}`);
+    if (btnAba) {
+      btnAba.classList.add('active');
+      btnAba.setAttribute('aria-current', 'page');
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   },
 
@@ -114,7 +143,7 @@ const UIController = {
           <h2 class="card-title">Pronto para rodar?</h2>
           <span class="text-muted-sm">Salva hora e KM inicial</span>
         </div>
-        <button class="btn-uber-go" onclick="UIController.iniciarTurnoNaPista()">
+        <button type="button" class="btn-uber-go" onclick="UIController.iniciarTurnoNaPista()">
           <span>▶ INICIAR TURNO AGORA</span>
         </button>
       `;
@@ -136,9 +165,10 @@ const UIController = {
     dot.classList.toggle('paused', emPausa);
     txt.textContent = emPausa ? 'Em Pausa' : 'Em Turno';
 
+    const horaSegura = StorageService.escaparHTML(ativo.horaFormatada || '');
     const badgeHTML = emPausa
       ? `<span class="status-badge status-warn">☕ PAUSA (${this.formatarDuracaoMs(pausaAtualMs)})</span>`
-      : `<span class="status-badge status-good">🟢 DESDE ${ativo.horaFormatada}</span>`;
+      : `<span class="status-badge status-good">🟢 DESDE ${horaSegura}</span>`;
 
     const botaoPausaHTML = emPausa
       ? `<button type="button" class="btn-uber-green mb-12" onclick="UIController.alternarPausaTurno()">
@@ -151,46 +181,46 @@ const UIController = {
     card.innerHTML = `
       <div class="card-header-row compact">
         ${badgeHTML}
-        <span class="status-badge">⏱️ ${this.formatarDuracaoMs(tempoLiquidoMs)}${ativo.kmInicial ? ` • KM ${ativo.kmInicial}` : ''}</span>
+        <span class="status-badge">⏱️ ${this.formatarDuracaoMs(tempoLiquidoMs)}${ativo.kmInicial ? ` • KM ${Number(ativo.kmInicial)}` : ''}</span>
       </div>
       <div class="kpi-row mb-12">
-        <div class="kpi-tile clickable" onclick="UIController.lancarGanhoParcial()" title="Toque para atualizar quanto já fez hoje">
+        <button type="button" class="kpi-tile clickable" onclick="UIController.lancarGanhoParcial()" title="Toque para atualizar quanto já fez hoje">
           <span>💰 Bruto Parcial</span>
           <strong>${FinanceEngine.moeda(brutoParcial)}</strong>
-        </div>
+        </button>
         <div class="kpi-tile">
           <span>💸 Gastos Rua</span>
           <strong>${FinanceEngine.moeda(totalGastosParciais)}</strong>
         </div>
-        <div class="kpi-tile clickable" onclick="UIController.lancarGanhoParcial()">
+        <button type="button" class="kpi-tile clickable" onclick="UIController.lancarGanhoParcial()" title="Toque para atualizar quanto já fez hoje">
           <span>✅ Livre Agora</span>
           <strong class="${lucroParcial >= 0 ? 'text-green' : 'text-red'}">${FinanceEngine.moeda(lucroParcial)}</strong>
-        </div>
+        </button>
       </div>
 
       ${botaoPausaHTML}
 
       <div class="live-shift-section-label">Lançar rápido na rua (toque p/ anotar):</div>
       <div class="quick-expense-grid">
-        <button class="quick-exp-btn" onclick="UIController.lancarGanhoParcial()">
+        <button type="button" class="quick-exp-btn" onclick="UIController.lancarGanhoParcial()">
           <span>💰</span>+ Ganhos
           <small>${FinanceEngine.moedaCurta(brutoParcial)}</small>
         </button>
-        <button class="quick-exp-btn" onclick="UIController.lancarGastoRapido('combustivel', 'Combustível / GNV', '⛽')">
+        <button type="button" class="quick-exp-btn" onclick="UIController.lancarGastoRapido('combustivel', 'Combustível / GNV', '⛽')">
           <span>⛽</span>+ Combust.
           <small>${FinanceEngine.moedaCurta(ativo.combustivel || 0)}</small>
         </button>
-        <button class="quick-exp-btn" onclick="UIController.lancarGastoRapido('alimentacao', 'Alimentação / Água', '🍔')">
+        <button type="button" class="quick-exp-btn" onclick="UIController.lancarGastoRapido('alimentacao', 'Alimentação / Água', '🍔')">
           <span>🍔</span>+ Refeição
           <small>${FinanceEngine.moedaCurta(ativo.alimentacao || 0)}</small>
         </button>
       </div>
 
       <div class="grid-2">
-        <button class="btn-uber-primary" onclick="UIController.prepararEncerramentoTurno()">
+        <button type="button" class="btn-uber-primary" onclick="UIController.prepararEncerramentoTurno()">
           🏁 Encerrar Turno
         </button>
-        <button class="btn-uber-ghost" onclick="UIController.cancelarTurnoVivo()">
+        <button type="button" class="btn-uber-ghost" onclick="UIController.cancelarTurnoVivo()">
           Cancelar
         </button>
       </div>
@@ -294,7 +324,7 @@ const UIController = {
     const valor = await Sheet.pedirValor({
       icone: icone || '💸',
       titulo: nomeAmigavel,
-      subtitulo: `Quanto você gastou agora? Já anotado neste turno: <b>${FinanceEngine.moeda(acumulado)}</b>`,
+      subtitulo: `Quanto você gastou agora? Já anotado neste turno: <b>${FinanceEngine.moeda(acumulado, true)}</b>`,
       placeholder: '0,00',
       prefixo: 'R$',
       atalhos: [10, 20, 50, 100],
@@ -366,6 +396,10 @@ const UIController = {
   aoMudarOdometro() {
     const kmIni = this.lerNumero('kmInicial');
     const kmFim = this.lerNumero('kmFinal');
+    const inputFim = document.getElementById('kmFinal');
+    const erroKm = kmIni > 0 && kmFim > 0 && kmFim < kmIni;
+    if (inputFim) inputFim.classList.toggle('input-error', erroKm);
+
     if (kmFim > kmIni) {
       document.getElementById('kmTotalInput').value = (kmFim - kmIni).toFixed(1).replace(/\.0$/, '');
       this.calcularCombustivelPorConsumo();
@@ -413,12 +447,14 @@ const UIController = {
 
   sincronizarPillsTags() {
     document.querySelectorAll('#listaTagsTurno .tag-pill').forEach(btn => {
-      btn.classList.toggle('active', this.tagsSelecionadas.includes(btn.dataset.tag));
+      const ativo = this.tagsSelecionadas.includes(btn.dataset.tag);
+      btn.classList.toggle('active', ativo);
+      btn.setAttribute('aria-pressed', String(ativo));
     });
   },
 
   async salvarFechamento() {
-    const obsTexto = (document.getElementById('obsTurno')?.value || '').trim();
+    const obsTexto = (document.getElementById('obsTurno')?.value || '').trim().slice(0, 60);
     const entrada = {
       dataISO: document.getElementById('dataTurno').value,
       horas: this.lerNumero('horasTrabalhadas'),
@@ -436,6 +472,16 @@ const UIController = {
       outrosGastos: this.lerNumero('outrosGastos'),
       custoKm: this.lerNumero('custoKm')
     };
+
+    if (entrada.kmIni > 0 && entrada.kmFim > 0 && entrada.kmFim < entrada.kmIni) {
+      const inputFim = document.getElementById('kmFinal');
+      if (inputFim) {
+        inputFim.classList.add('input-error');
+        inputFim.focus();
+      }
+      this.notificar('⚠️ KM Final não pode ser menor que o KM Inicial!');
+      return;
+    }
 
     const calc = FinanceEngine.calcularTurno(entrada);
 
@@ -506,7 +552,7 @@ const UIController = {
       const salvarMesmoAssim = await Sheet.confirmar({
         icone: '🧐',
         titulo: 'Esse turno já foi salvo',
-        subtitulo: `Já existe um fechamento de <b>${duplicado.data}</b> com os mesmos valores (Lucro <b>${FinanceEngine.moeda(duplicado.lucroLiquido)}</b>). Salvar outra vez vai duplicar seus ganhos.`,
+        subtitulo: `Já existe um fechamento de <b>${StorageService.escaparHTML(duplicado.data)}</b> com os mesmos valores (Lucro <b>${FinanceEngine.moeda(duplicado.lucroLiquido, true)}</b>). Salvar outra vez vai duplicar seus ganhos.`,
         textoOk: 'Salvar mesmo assim',
         textoCancelar: 'Não salvar',
         variante: 'danger'
@@ -535,7 +581,7 @@ const UIController = {
 
     box.innerHTML = `
       <div class="card-header-row">
-        <strong>Recibo • ${reg.data}</strong>
+        <strong>Recibo • ${StorageService.escaparHTML(reg.data)}</strong>
         <span class="status-badge ${avaliacao.classe}">${avaliacao.rotulo}</span>
       </div>
       <div class="receipt-row"><span>KM Total Rodado</span><span>${reg.kmTotal} km</span></div>
@@ -556,12 +602,12 @@ const UIController = {
 
     this.ultimoTextoWhatsApp =
       `🖤 *FECHAMENTO MEU TURNO (${reg.data})*\n` +
-      `💰 *Bruto:* ${FinanceEngine.moeda(reg.faturamento)}\n` +
-      `⛽ *Custos Totais:* ${FinanceEngine.moeda(reg.custosTotais)}\n` +
-      `✅ *LUCRO LÍQUIDO:* ${FinanceEngine.moeda(reg.lucroLiquido)} (${calc.margemLiquida}%)\n` +
-      `🛣️ *KM:* ${reg.kmTotal} km (Líq: ${FinanceEngine.moeda(reg.liquidoKm)}/km)\n` +
-      (reg.horas > 0 ? `⏱️ *Horas:* ${reg.horas}h (Líq: ${FinanceEngine.moeda(reg.liquidoHora)}/h)\n` : '') +
-      `🏁 *Corridas:* ${reg.corridas} (Ticket: ${FinanceEngine.moeda(reg.ticketMedio)})`;
+      `💰 *Bruto:* ${FinanceEngine.moeda(reg.faturamento, true)}\n` +
+      `⛽ *Custos Totais:* ${FinanceEngine.moeda(reg.custosTotais, true)}\n` +
+      `✅ *LUCRO LÍQUIDO:* ${FinanceEngine.moeda(reg.lucroLiquido, true)} (${calc.margemLiquida}%)\n` +
+      `🛣️ *KM:* ${reg.kmTotal} km (Líq: ${FinanceEngine.moeda(reg.liquidoKm, true)}/km)\n` +
+      (reg.horas > 0 ? `⏱️ *Horas:* ${reg.horas}h (Líq: ${FinanceEngine.moeda(reg.liquidoHora, true)}/h)\n` : '') +
+      `🏁 *Corridas:* ${reg.corridas} (Ticket: ${FinanceEngine.moeda(reg.ticketMedio, true)})`;
   },
 
   copiarWhatsApp() {
@@ -577,8 +623,14 @@ const UIController = {
   mudarPeriodo(periodo, btn) {
     this.periodoAtual = periodo;
     this.indiceBarraSelecionada = null;
-    document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
-    if (btn) btn.classList.add('active');
+    document.querySelectorAll('.seg-btn').forEach(b => {
+      b.classList.remove('active');
+      b.setAttribute('aria-pressed', 'false');
+    });
+    if (btn) {
+      btn.classList.add('active');
+      btn.setAttribute('aria-pressed', 'true');
+    }
 
     // Sincroniza automaticamente a aba do Card de Meta com o período escolhido
     if (periodo === '7dias') {
@@ -830,8 +882,13 @@ const UIController = {
 
     const modo = this.abaMetaAtiva || 'dia';
     btnDia.classList.toggle('active', modo === 'dia');
+    btnDia.setAttribute('aria-pressed', String(modo === 'dia'));
     btnSem.classList.toggle('active', modo === 'semana');
-    if (btnMes) btnMes.classList.toggle('active', modo === 'mes');
+    btnSem.setAttribute('aria-pressed', String(modo === 'semana'));
+    if (btnMes) {
+      btnMes.classList.toggle('active', modo === 'mes');
+      btnMes.setAttribute('aria-pressed', String(modo === 'mes'));
+    }
     btnEditar.textContent = modo === 'semana' ? 'Editar sem.' : (modo === 'mes' ? 'Editar mês' : 'Editar dia');
 
     if (modo === 'dia') {
@@ -1232,7 +1289,9 @@ const UIController = {
 
       // Dias sem turno não mostram rótulo (antes era "—", poluía o gráfico)
       const rotuloValor = d.valor !== 0
-        ? `${d.valor < 0 ? '-' : ''}R$${Math.abs(Math.round(d.valor)).toLocaleString('pt-BR')}`
+        ? (FinanceEngine.ocultarValores
+            ? '•••'
+            : `${d.valor < 0 ? '-' : ''}R$${Math.abs(Math.round(d.valor)).toLocaleString('pt-BR')}`)
         : '';
       const selecionado = this.indiceBarraSelecionada === idx;
       const aria = `${d.dataCompleta}: ${d.qtdTurnos > 0 ? FinanceEngine.moeda(d.valor) : 'sem turno'}`;
@@ -1373,14 +1432,14 @@ const UIController = {
 
     if (kpisBox) {
       kpisBox.innerHTML = `
-        <div class="kpi-tile clickable" onclick="UIController.gerenciarCaixaManutencao()" title="Toque para registrar gasto com oficina/peças">
+        <button type="button" class="kpi-tile clickable" onclick="UIController.gerenciarCaixaManutencao()" title="Toque para registrar gasto com oficina/peças">
           <span>🛠️ Caixa Manutenção</span>
           <strong class="text-green">${FinanceEngine.moeda(saldoCaixaManut)}</strong>
-        </div>
-        <div class="kpi-tile clickable" onclick="UIController.configurarTrocaOleo()" title="Toque para ajustar KM da próxima troca de óleo">
+        </button>
+        <button type="button" class="kpi-tile clickable" onclick="UIController.configurarTrocaOleo()" title="Toque para ajustar KM da próxima troca de óleo">
           <span>🛢️ Próxima Troca</span>
           <strong class="${corOleoKpi}">${txtOleoKpi}</strong>
-        </div>
+        </button>
       `;
     }
 
@@ -1405,7 +1464,7 @@ const UIController = {
     const gastoOficina = await Sheet.pedirValor({
       icone: '🛠️',
       titulo: 'Caixa de Manutenção',
-      subtitulo: `Você já acumulou <b>${FinanceEngine.moeda(saldo)}</b> livres na reserva por KM. Digite quanto gastou na oficina/peças para abater do caixa (ou 0 p/ cancelar):`,
+      subtitulo: `Você já acumulou <b>${FinanceEngine.moeda(saldo, true)}</b> livres na reserva por KM. Digite quanto gastou na oficina/peças para abater do caixa (ou 0 p/ cancelar):`,
       placeholder: '0,00',
       prefixo: 'R$',
       atalhos: [50, 100, 200, 350],
@@ -1556,6 +1615,7 @@ const UIController = {
     const hint = document.getElementById(`hint-turno-${id}`);
     if (!card) return;
     const abriu = card.classList.toggle('open');
+    card.setAttribute('aria-expanded', String(abriu));
     if (hint) {
       hint.textContent = abriu ? '▴ Ocultar' : '▾ Raio-X';
     }
@@ -1680,16 +1740,22 @@ const UIController = {
           : '';
 
         const listaTags = Array.isArray(item.tags) ? item.tags : [];
-        const temTagsOuObs = listaTags.length > 0 || (item.obs && item.obs.trim() !== '');
+        const obsLimpa = item.obs ? StorageService.escaparHTML(item.obs.trim()) : '';
+        const temTagsOuObs = listaTags.length > 0 || obsLimpa !== '';
         const tagsHTML = temTagsOuObs
           ? `<div class="act-tags-row">
-               ${listaTags.map(tg => `<span class="act-tag-badge">${tg}</span>`).join('')}
-               ${item.obs ? `<span class="act-tag-badge">📝 ${item.obs}</span>` : ''}
+               ${listaTags.map(tg => `<span class="act-tag-badge">${StorageService.escaparHTML(tg)}</span>`).join('')}
+               ${obsLimpa ? `<span class="act-tag-badge">📝 ${obsLimpa}</span>` : ''}
              </div>`
           : '';
 
+        const idSeguro = StorageService.escaparHTML(item.id);
+        const dataSegura = StorageService.escaparHTML(item.data);
+
         return `
-          <div id="card-turno-${item.id}" class="activity-item" onclick="UIController.toggleDetalhesTurno('${item.id}')">
+          <div id="card-turno-${idSeguro}" class="activity-item" role="button" tabindex="0" aria-expanded="false"
+               onclick="UIController.toggleDetalhesTurno('${idSeguro}')"
+               onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();UIController.toggleDetalhesTurno('${idSeguro}');}">
             <div class="act-header">
               <div class="act-title-wrap">
                 <span class="act-title">${diaSem}, ${dataCurta}</span>
@@ -1697,7 +1763,7 @@ const UIController = {
               </div>
               <div class="act-header-right">
                 <span class="act-net">${FinanceEngine.moeda(item.lucroLiquido)}</span>
-                <span id="hint-turno-${item.id}" class="act-toggle-hint">▾ Raio-X</span>
+                <span id="hint-turno-${idSeguro}" class="act-toggle-hint">▾ Raio-X</span>
               </div>
             </div>
             <div class="kpi-row">
@@ -1716,8 +1782,8 @@ const UIController = {
             </div>
             ${tagsHTML}
 
-            <div class="act-details-panel" onclick="event.stopPropagation()">
-              <div class="act-detail-section-title">🛣️ Operação e Eficiência (${item.data})</div>
+            <div class="act-details-panel" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+              <div class="act-detail-section-title">🛣️ Operação e Eficiência (${dataSegura})</div>
               <div class="detail-box">
                 <div class="act-detail-row">
                   <span>Odômetro</span>
@@ -1764,13 +1830,13 @@ const UIController = {
 
               <!-- Barra Padronizada e Ergonômica de 3 Ações -->
               <div class="act-actions-bar">
-                <button type="button" class="act-action-btn" onclick="UIController.compartilharTurnoId('${item.id}')">
+                <button type="button" class="act-action-btn" onclick="UIController.compartilharTurnoId('${idSeguro}')">
                   📲 WhatsApp
                 </button>
-                <button type="button" class="act-action-btn" onclick="UIController.editarTurno('${item.id}')">
+                <button type="button" class="act-action-btn" onclick="UIController.editarTurno('${idSeguro}')">
                   ✏️ Editar
                 </button>
-                <button type="button" class="act-action-btn danger" onclick="UIController.excluirTurno('${item.id}')">
+                <button type="button" class="act-action-btn danger" onclick="UIController.excluirTurno('${idSeguro}')">
                   🗑️ Excluir
                 </button>
               </div>
@@ -1811,11 +1877,11 @@ const UIController = {
     const texto =
       `🖤 *FECHAMENTO SEMANA ${g.numStr}/${g.anoISO} (${g.intervaloCurto})*\n` +
       `🗓️ *Dias Rodados:* ${g.diasUnicos.size} dia(s) (${g.turnos.length} turnos)\n` +
-      `💰 *Faturamento Bruto:* ${FinanceEngine.moeda(g.somaBruto)}\n` +
-      `⛽ *Custos Totais:* ${FinanceEngine.moeda(g.somaCustos)}\n` +
-      `✅ *LUCRO LÍQUIDO LIVRE:* ${FinanceEngine.moeda(g.somaLucro)}\n` +
-      `🛣️ *KM Total:* ${g.somaKm.toFixed(0)} km (Líq: ${FinanceEngine.moeda(liqKm)}/km)` +
-      (g.somaHoras > 0 ? `\n⏱️ *Horas:* ${g.somaHoras.toFixed(1)}h (Líq: ${FinanceEngine.moeda(liqHora)}/h)` : '');
+      `💰 *Faturamento Bruto:* ${FinanceEngine.moeda(g.somaBruto, true)}\n` +
+      `⛽ *Custos Totais:* ${FinanceEngine.moeda(g.somaCustos, true)}\n` +
+      `✅ *LUCRO LÍQUIDO LIVRE:* ${FinanceEngine.moeda(g.somaLucro, true)}\n` +
+      `🛣️ *KM Total:* ${g.somaKm.toFixed(0)} km (Líq: ${FinanceEngine.moeda(liqKm, true)}/km)` +
+      (g.somaHoras > 0 ? `\n⏱️ *Horas:* ${g.somaHoras.toFixed(1)}h (Líq: ${FinanceEngine.moeda(liqHora, true)}/h)` : '');
 
     navigator.clipboard.writeText(texto).then(() => {
       this.notificar(`Resumo da Semana ${g.numStr} copiado p/ WhatsApp!`);
@@ -1827,11 +1893,11 @@ const UIController = {
     if (!reg) return;
     const texto =
       `🖤 *FECHAMENTO MEU TURNO (${reg.data})*\n` +
-      `💰 *Bruto:* ${FinanceEngine.moeda(reg.faturamento || 0)}\n` +
-      `⛽ *Custos Totais:* ${FinanceEngine.moeda(reg.custosTotais || 0)}\n` +
-      `✅ *LUCRO LÍQUIDO:* ${FinanceEngine.moeda(reg.lucroLiquido)}\n` +
-      `🛣️ *KM:* ${reg.kmTotal} km (Líq: ${FinanceEngine.moeda(reg.liquidoKm)}/km)` +
-      (reg.horas > 0 ? `\n⏱️ *Horas:* ${reg.horas}h (Líq: ${FinanceEngine.moeda(reg.liquidoHora)}/h)` : '');
+      `💰 *Bruto:* ${FinanceEngine.moeda(reg.faturamento || 0, true)}\n` +
+      `⛽ *Custos Totais:* ${FinanceEngine.moeda(reg.custosTotais || 0, true)}\n` +
+      `✅ *LUCRO LÍQUIDO:* ${FinanceEngine.moeda(reg.lucroLiquido, true)}\n` +
+      `🛣️ *KM:* ${reg.kmTotal} km (Líq: ${FinanceEngine.moeda(reg.liquidoKm, true)}/km)` +
+      (reg.horas > 0 ? `\n⏱️ *Horas:* ${reg.horas}h (Líq: ${FinanceEngine.moeda(reg.liquidoHora, true)}/h)` : '');
 
     navigator.clipboard.writeText(texto).then(() => {
       this.notificar(`Resumo de ${reg.data} copiado p/ WhatsApp!`);
@@ -2012,10 +2078,10 @@ const UIController = {
     contPontos.innerHTML = pontos.map(p => `
       <div class="restore-point-row">
         <div>
-          <b class="text-white">${p.motivo}</b><br>
-          <span class="text-muted-sm">${p.dataHora} • ${p.qtdTurnos} turno(s)</span>
+          <b class="text-white">${StorageService.escaparHTML(p.motivo)}</b><br>
+          <span class="text-muted-sm">${StorageService.escaparHTML(p.dataHora)} • ${Number(p.qtdTurnos) || 0} turno(s)</span>
         </div>
-        <button type="button" class="chip-btn" onclick="UIController.restaurarPonto(${p.id})">Restaurar</button>
+        <button type="button" class="chip-btn" onclick="UIController.restaurarPonto(${Number(p.id) || 0})">Restaurar</button>
       </div>
     `).join('');
   },
@@ -2029,14 +2095,18 @@ const UIController = {
 
     const pacote = {
       app: 'meu-turno',
-      versao: 3,
+      versao: 4,
       exportadoEm: new Date().toISOString(),
       configuracoes: {
         metaDiaria: StorageService.obterNumero(KEYS.META_DIARIA, DEFAULTS.META_DIARIA),
         metaSemanal: StorageService.obterNumero(KEYS.META_SEMANAL, DEFAULTS.META_SEMANAL),
+        metaMensal: StorageService.obterNumero(KEYS.META_MENSAL, DEFAULTS.META_MENSAL),
         custoKm: StorageService.obterNumero(KEYS.CUSTO_KM, DEFAULTS.CUSTO_KM),
         consumoKmL: StorageService.obterNumero(KEYS.CONSUMO_KML, 0),
-        precoLitro: StorageService.obterNumero(KEYS.PRECO_LITRO, 0)
+        precoLitro: StorageService.obterNumero(KEYS.PRECO_LITRO, 0),
+        kmProxOleo: StorageService.obterNumero(KEYS.KM_PROX_OLEO, 0),
+        custoFixoMes: StorageService.obterNumero(KEYS.CUSTO_FIXO_MES, 0),
+        baixaManut: StorageService.obterNumero(KEYS.BAIXA_MANUT, 0)
       },
       turnos
     };
@@ -2077,9 +2147,12 @@ const UIController = {
     try {
       const texto = await file.text();
       const dados = JSON.parse(texto);
-      const listaImportada = Array.isArray(dados) ? dados : (Array.isArray(dados.turnos) ? dados.turnos : null);
+      const listaBruta = Array.isArray(dados) ? dados : (Array.isArray(dados.turnos) ? dados.turnos : null);
+      const listaImportada = Array.isArray(listaBruta)
+        ? listaBruta.map((t, idx) => StorageService.sanitizarTurno(t, idx)).filter(Boolean)
+        : [];
 
-      if (!listaImportada || listaImportada.length === 0) {
+      if (listaImportada.length === 0) {
         this.notificar('Arquivo inválido ou sem turnos.');
         return;
       }
@@ -2106,10 +2179,17 @@ const UIController = {
       const mesclados = Array.from(mapa.values());
       StorageService.salvarTurnos(mesclados);
 
-      if (dados.configuracoes) {
-        if (dados.configuracoes.metaDiaria) StorageService.salvarValor(KEYS.META_DIARIA, dados.configuracoes.metaDiaria);
-        if (dados.configuracoes.metaSemanal) StorageService.salvarValor(KEYS.META_SEMANAL, dados.configuracoes.metaSemanal);
-        if (dados.configuracoes.custoKm) StorageService.salvarValor(KEYS.CUSTO_KM, dados.configuracoes.custoKm);
+      if (dados.configuracoes && typeof dados.configuracoes === 'object') {
+        const cfg = dados.configuracoes;
+        if (cfg.metaDiaria > 0) StorageService.salvarValor(KEYS.META_DIARIA, Number(cfg.metaDiaria).toFixed(2));
+        if (cfg.metaSemanal > 0) StorageService.salvarValor(KEYS.META_SEMANAL, Number(cfg.metaSemanal).toFixed(2));
+        if (cfg.metaMensal > 0) StorageService.salvarValor(KEYS.META_MENSAL, Number(cfg.metaMensal).toFixed(2));
+        if (cfg.custoKm >= 0) StorageService.salvarValor(KEYS.CUSTO_KM, Number(cfg.custoKm));
+        if (cfg.consumoKmL > 0) StorageService.salvarValor(KEYS.CONSUMO_KML, Number(cfg.consumoKmL));
+        if (cfg.precoLitro > 0) StorageService.salvarValor(KEYS.PRECO_LITRO, Number(cfg.precoLitro));
+        if (cfg.kmProxOleo > 0) StorageService.salvarValor(KEYS.KM_PROX_OLEO, Math.round(Number(cfg.kmProxOleo)));
+        if (cfg.custoFixoMes >= 0) StorageService.salvarValor(KEYS.CUSTO_FIXO_MES, Number(cfg.custoFixoMes));
+        if (cfg.baixaManut >= 0) StorageService.salvarValor(KEYS.BAIXA_MANUT, Number(cfg.baixaManut).toFixed(2));
       }
 
       StorageGuard.registrarBackupExterno(mesclados.length);
@@ -2128,7 +2208,7 @@ const UIController = {
     const ok = await Sheet.confirmar({
       icone: '⏪',
       titulo: 'Voltar para este ponto?',
-      subtitulo: `Restaurar <b>${alvo.qtdTurnos} turno(s)</b> do ponto <i>"${alvo.motivo}"</i> (${alvo.dataHora})?`,
+      subtitulo: `Restaurar <b>${Number(alvo.qtdTurnos) || 0} turno(s)</b> do ponto <i>"${StorageService.escaparHTML(alvo.motivo)}"</i> (${StorageService.escaparHTML(alvo.dataHora)})?`,
       textoOk: 'Sim, restaurar',
       variante: 'green'
     });

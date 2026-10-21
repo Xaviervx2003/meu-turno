@@ -5,6 +5,7 @@
 const Sheet = {
   _resolver: null,
   _coletar: null,
+  _focoAnterior: null,
 
   el(id) { return document.getElementById(id); },
 
@@ -15,6 +16,7 @@ const Sheet = {
     return new Promise(resolve => {
       this._resolver = resolve;
       this._coletar = coletar;
+      this._focoAnterior = document.activeElement;
 
       this.el('sheetIcone').textContent = icone;
       this.el('sheetIcone').style.display = icone ? 'flex' : 'none';
@@ -31,7 +33,13 @@ const Sheet = {
       this.el('sheetOverlay').classList.add('open');
       this.el('sheet').classList.add('open');
 
-      if (aoAbrir) setTimeout(aoAbrir, 180);
+      setTimeout(() => {
+        if (aoAbrir) {
+          aoAbrir();
+        } else {
+          btnOk.focus();
+        }
+      }, 180);
     });
   },
 
@@ -47,8 +55,13 @@ const Sheet = {
     this.el('sheet').classList.remove('open');
     document.body.classList.remove('sheet-aberto');
     const resolver = this._resolver;
+    const focoAnterior = this._focoAnterior;
     this._resolver = null;
     this._coletar = null;
+    this._focoAnterior = null;
+    if (focoAnterior && typeof focoAnterior.focus === 'function') {
+      try { focoAnterior.focus(); } catch {}
+    }
     if (resolver) resolver(valor);
   },
 
@@ -64,12 +77,14 @@ const Sheet = {
         ).join('')}</div>`
       : '';
 
+    const rotuloAria = StorageService.escaparHTML(resto.titulo || 'Valor');
     const corpoHTML = `
       <div class="sheet-input-wrap" id="sheetInputWrap">
-        ${prefixo ? `<span class="sheet-affix">${prefixo}</span>` : ''}
+        ${prefixo ? `<span class="sheet-affix" aria-hidden="true">${prefixo}</span>` : ''}
         <input id="sheetInput" type="number" step="${inteiro ? '1' : '0.01'}"
+               aria-label="${rotuloAria}"
                inputmode="${inteiro ? 'numeric' : 'decimal'}" placeholder="${placeholder}" value="${valorInicial}">
-        ${sufixo ? `<span class="sheet-affix">${sufixo}</span>` : ''}
+        ${sufixo ? `<span class="sheet-affix" aria-hidden="true">${sufixo}</span>` : ''}
       </div>
       ${chips}
     `;
@@ -118,5 +133,24 @@ const Sheet = {
 };
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && Sheet._resolver) Sheet.fechar(null);
+  if (!Sheet._resolver) return;
+  if (e.key === 'Escape') {
+    Sheet.fechar(null);
+    return;
+  }
+  if (e.key === 'Tab') {
+    const modal = Sheet.el('sheet');
+    if (!modal) return;
+    const focaveis = Array.from(modal.querySelectorAll('input, button:not([disabled]), select, [tabindex]:not([tabindex="-1"])'));
+    if (focaveis.length === 0) return;
+    const primeiro = focaveis[0];
+    const ultimo = focaveis[focaveis.length - 1];
+    if (e.shiftKey && document.activeElement === primeiro) {
+      e.preventDefault();
+      ultimo.focus();
+    } else if (!e.shiftKey && document.activeElement === ultimo) {
+      e.preventDefault();
+      primeiro.focus();
+    }
+  }
 });
