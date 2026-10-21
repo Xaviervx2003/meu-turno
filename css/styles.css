@@ -2,6 +2,7 @@
    1. DESIGN TOKENS — PADRÃO UBER DRIVER (BASE UI DARK OLED)
    ========================================================================== */
 :root {
+  color-scheme: dark;
   --uber-black: #000000;
   --uber-surface: #141414;
   --uber-surface-elevated: #1F1F1F;
@@ -1488,6 +1489,9 @@ body.sheet-aberto { overflow: hidden; }
   bottom: 0;
   width: 100%;
   max-width: 480px;
+  max-height: 92dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   transform: translate(-50%, 105%);
   background: var(--uber-surface);
   border: 1px solid var(--uber-border);

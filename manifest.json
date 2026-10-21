@@ -1,4 +1,5 @@
 {
+  "id": "/meu-turno/",
   "name": "Meu Turno — Driver Finance",
   "short_name": "Meu Turno",
   "description": "Controle financeiro diário de ganhos e gastos no padrão Uber Driver.",
@@ -8,18 +9,69 @@
   "background_color": "#000000",
   "theme_color": "#000000",
   "orientation": "portrait-primary",
+  "categories": ["finance", "productivity", "utilities"],
   "icons": [
     {
-      "src": "./icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "./icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "maskable"
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Iniciar Turno",
+      "short_name": "Iniciar",
+      "description": "Ligue o odômetro e inicie o turno na pista",
+      "url": "./index.html?acao=iniciar",
+      "icons": [
+        {
+          "src": "./icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Fechar Turno",
+      "short_name": "Fechar",
+      "description": "Fechamento rápido de ganhos e gastos",
+      "url": "./index.html?acao=fechar",
+      "icons": [
+        {
+          "src": "./icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Simulador de Corrida",
+      "short_name": "Simulador",
+      "description": "Calcule se a corrida compensa",
+      "url": "./index.html?acao=simulador",
+      "icons": [
+        {
+          "src": "./icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }

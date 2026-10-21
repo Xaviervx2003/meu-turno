@@ -78,19 +78,21 @@ Para **nunca ficar bagunçado** ou poluído visualmente, a interface segue rigor
 
 ---
 
-## 4. Arquitetura Modular Atual & Repositório (`meu-turno-v16`)
+## 4. Arquitetura Modular Atual & Repositório (`meu-turno-v17`)
 
 - **Diretório Local:** `C:\Users\direcao\.gemini\antigravity\scratch\meu-turno`
 - **Repositório GitHub Pages:** `https://github.com/Xaviervx2003/meu-turno.git` (branch `main` → `https://xaviervx2003.github.io/meu-turno/`)
 - **Estrutura de Arquivos:**
-  - `index.html`: Estrutura semântica enxuta das 3 abas (`#tab-painel`, `#tab-fechar`, `#tab-historico`) + Bottom Sheet (`#sheet`).
-  - `css/styles.css`: Design System **Uber Base UI Dark OLED**, blocos padronizados `.kpi-tile` / `.kpi-row` / `.kpi-row-2`, gráfico interativo e responsividade garantida para telas de `360px`.
+  - `index.html`: Estrutura semântica enxuta das 3 abas (`#tab-painel`, `#tab-fechar`, `#tab-historico`) + Bottom Sheet (`#sheet`) + tags `<meta name="color-scheme" content="dark">` e `enterkeyhint`.
+  - `css/styles.css`: Design System **Uber Base UI Dark OLED**, `color-scheme: dark;` nativo, blocos padronizados `.kpi-tile` / `.kpi-row` / `.kpi-row-2`, `.sheet` com `max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain;`, gráfico interativo e responsividade para `360px`.
+  - `icon.svg`, `icon-192.png`, `icon-512.png`: Ícones vetoriais e rasterizados de alta resolução padrão Google Play / WebAPK.
+  - `manifest.json`: Web App Manifest com `"id"`, `"categories"`, ícones PNG `192x192` e `512x512` (any e maskable) e `shortcuts` de acesso rápido.
   - `js/storage.js`: `KEYS`, `DEFAULTS`, `StorageService` (com sanitização XSS `escaparHTML` e validação de schema `sanitizarTurno`), `Cofre` (espelhamento automático de turnos e configurações em IndexedDB + pontos de restauração), `Rascunho` e `StorageGuard`.
   - `js/calendar.js`: `CalendarEngine` (cálculo de Semanas do Ano ISO `01–52/53` no ciclo Segunda a Domingo, navegação por offset e agrupamento semanal/mensal).
   - `js/finance.js`: `FinanceEngine` (fórmulas financeiras, avaliação de rentabilidade, `resumirLista`, Modo Privacidade `ocultarValores`, formatação `moeda`, `moedaCurta`, `numeroBR`).
-  - `js/sheet.js`: `Sheet` (Bottom Sheet nativo estilo Uber substituindo `prompt`/`confirm`, com Focus Trap `Tab` e retorno automático de foco).
-  - `js/ui.js`: `UIController` (Turno ao Vivo com Ganhos Parciais e Pausa Almoço, Modo Privacidade `👁️/🙈`, Gráfico Adaptativo por Dia/Semana/Mês, Raio-X por App Uber/99/Pix, Meta Diária/Semanal/Mensal com projeção, Caixa de Manutenção acumulado, Simulador de Corrida e Histórico com Backup JSON/CSV).
-  - `sw.js`: Service Worker **Network-First com fallback Offline**.
+  - `js/sheet.js`: `Sheet` (Bottom Sheet nativo estilo Uber com histórico `popstate`, Focus Trap `Tab` e retorno automático de foco).
+  - `js/ui.js`: `UIController` (Turno ao Vivo com Ganhos Parciais e Pausa Almoço, `AndroidWakeLock` veicular, histórico Android Back Button, dispatch de atalhos URL, compartilhamento nativo `navigator.share`, Modo Privacidade `👁️/🙈`, Gráfico Adaptativo por Dia/Semana/Mês, Raio-X por App Uber/99/Pix, Meta Diária/Semanal/Mensal com projeção, Caixa de Manutenção acumulado, Simulador de Corrida e Histórico com Backup JSON/CSV).
+  - `sw.js`: Service Worker `meu-turno-v17` **Network-First com fallback Offline** com cache de assets completos incluindo PNGs.
 
 ### 4.1. Próxima Funcionalidade Planejada: Leitor Automático de Notas Fiscais (NFC-e SEFAZ-AM)
 - Leitura via QR Code (câmera) ou link da **SEFAZ-AM** (`https://sistemas.sefaz.am.gov.br/nfceweb/consultarNFCe.do?acao=submitConsultaNFCeRedirect&txtChaveAcessoNFe=...&hash=...`).
@@ -129,3 +131,27 @@ Para **nunca ficar bagunçado** ou poluído visualmente, a interface segue rigor
    - KPIs clicáveis, pílula do topo e alerta de óleo convertidos em `<button type="button">` nativos; gavetas recolhíveis sincronizam `aria-expanded` / `aria-controls`; cards de histórico com `role="button"`, `tabindex="0"`, `aria-expanded` e suporte às teclas `Enter`/`Espaço`.
    - `#toast` e status do turno configurados com `role="status" aria-live="polite"`.
    - Modal `Sheet` prende o foco (`Tab` / `Shift+Tab`) enquanto aberto e devolve o foco ao botão de origem ao fechar.
+
+---
+
+## 6. Engenharia Nativa Android Puro (6 Pilares Implementados — `v17`)
+
+1. **Predictive Back Navigation & Botão Voltar do Android (`popstate` / History API):**
+   - Ao abrir qualquer `Sheet` (`Sheet.pedirValor`, `Sheet.confirmar`), o app empilha um estado no histórico (`history.pushState({ modal: 'sheet' })`). Ao pressionar o botão Voltar do Android (físico ou gesto lateral), o evento `popstate` intercepta e fecha o Sheet suavemente sem sair do app.
+   - Ao navegar entre as abas (`fechar`, `historico`), o histórico armazena `{ aba }`. O botão Voltar do Android retorna à aba principal (`painel`) antes de fechar o app, comportando-se exatamente como um aplicativo nativo Android.
+2. **Tema Dark Nativo Android & System Navigation Bar (`color-scheme: dark`):**
+   - Inclusão de `color-scheme: dark;` na raiz do CSS (`:root`) e `<meta name="color-scheme" content="dark">` no HTML.
+   - Instrui o motor Chromium/Android WebView a pintar os fundos de carregamento inicial em preto puro (`#000000`), renderizar controles nativos (como seletor de data e barras de rolagem) no estilo escuro e ajustar a barra de navegação do sistema Android para não ofuscar a visão noturna do motorista.
+3. **Otimização do Teclado Virtual Android (IME / Soft Keyboard):**
+   - Adicionados atributos semânticos `enterkeyhint="next"` para campos sequenciais de formulário e `enterkeyhint="done"` para o último campo ou campos de valor único.
+   - Listener de teclado avançando o foco automaticamente ao pressionar a tecla de ação do teclado Android.
+   - O Bottom Sheet (`.sheet`) recebeu `max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain;` para que, ao abrir o teclado virtual, os inputs e botões de confirmação continuem visíveis e roláveis sem quebrar o layout.
+4. **Padrão Google Play Store & WebAPK (Empacotamento TWA / Bubblewrap):**
+   - Geração de ícones rasterizados PNG em `192x192` (`icon-192.png`) e `512x512` (`icon-512.png`), incluindo propósito `maskable` (com zona segura para ícones adaptativos do Android) e `any`.
+   - `manifest.json` atualizado com `"id": "/meu-turno/"`, `"categories": ["finance", "productivity", "utilities"]` e `shortcuts` (Atalhos rápidos na tela inicial do Android ao segurar o ícone do app: "Iniciar Turno", "Fechar Turno" e "Simulador de Corrida").
+   - Tratamento de parâmetros de inicialização (`?acao=iniciar`, `?acao=fechar`, `?acao=simulador`) em `UIController.iniciar()`.
+5. **Web Share API Nativa do Android (`navigator.share`):**
+   - O compartilhamento de relatórios diários e resumos semanais utiliza preferencialmente o `navigator.share()`, acionando a folha nativa do Android (Direct Share) com 1 toque direto para WhatsApp, Telegram ou contatos recentes, mantendo fallback resiliente para a área de transferência (`navigator.clipboard`).
+6. **Screen Wake Lock API Veicular (`navigator.wakeLock`):**
+   - Módulo `AndroidWakeLock` que solicita a trava de tela (`screen`) enquanto o turno estiver em andamento na pista ou durante o uso do simulador de corrida com o celular fixado no suporte veicular, impedindo que a tela apague ou bloqueie durante o trabalho.
+   - Reativação inteligente da trava ao alternar entre aplicativos através do evento `visibilitychange`.

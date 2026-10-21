@@ -1,9 +1,11 @@
-const CACHE_NAME = 'meu-turno-v16';
+const CACHE_NAME = 'meu-turno-v17';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './icon.svg',
+  './icon-192.png',
+  './icon-512.png',
   './css/styles.css',
   './js/storage.js',
   './js/calendar.js',

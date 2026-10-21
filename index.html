@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self';">
   <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#000000">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,7 +14,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
-  <link rel="stylesheet" href="./css/styles.css?v=16">
+  <link rel="stylesheet" href="./css/styles.css?v=17">
   <title>Meu Turno — Driver</title>
 </head>
 <body>
@@ -160,15 +161,15 @@
         <div class="grid-3">
           <div>
             <label for="simValor">Valor (R$)</label>
-            <input type="number" id="simValor" step="0.5" inputmode="decimal" placeholder="Ex: 18" oninput="UIController.simularCorrida()">
+            <input type="number" id="simValor" step="0.5" inputmode="decimal" enterkeyhint="next" placeholder="Ex: 18" oninput="UIController.simularCorrida()">
           </div>
           <div>
             <label for="simKm">KM c/ Busca</label>
-            <input type="number" id="simKm" step="0.5" inputmode="decimal" placeholder="Ex: 9.5" oninput="UIController.simularCorrida()">
+            <input type="number" id="simKm" step="0.5" inputmode="decimal" enterkeyhint="next" placeholder="Ex: 9.5" oninput="UIController.simularCorrida()">
           </div>
           <div>
             <label for="simMin">Tempo (min)</label>
-            <input type="number" id="simMin" inputmode="numeric" placeholder="Ex: 20" oninput="UIController.simularCorrida()">
+            <input type="number" id="simMin" inputmode="numeric" enterkeyhint="done" placeholder="Ex: 20" oninput="UIController.simularCorrida()">
           </div>
         </div>
         <div id="resultadoSimulador" class="text-helper" aria-live="polite">
@@ -202,33 +203,33 @@
       <div class="grid-2">
         <div>
           <label for="dataTurno">Data</label>
-          <input type="date" id="dataTurno">
+          <input type="date" id="dataTurno" enterkeyhint="next">
         </div>
         <div>
           <label for="horasTrabalhadas">Horas na Pista</label>
-          <input type="number" id="horasTrabalhadas" step="0.5" inputmode="decimal" placeholder="Ex: 8.5">
+          <input type="number" id="horasTrabalhadas" step="0.5" inputmode="decimal" enterkeyhint="next" placeholder="Ex: 8.5">
         </div>
       </div>
 
       <div class="grid-2">
         <div>
           <label for="kmInicial">KM Inicial</label>
-          <input type="number" id="kmInicial" inputmode="numeric" placeholder="Ex: 45200" oninput="UIController.aoMudarOdometro()">
+          <input type="number" id="kmInicial" inputmode="numeric" enterkeyhint="next" placeholder="Ex: 45200" oninput="UIController.aoMudarOdometro()">
         </div>
         <div>
           <label for="kmFinal">KM Final</label>
-          <input type="number" id="kmFinal" inputmode="numeric" placeholder="Ex: 45380" oninput="UIController.aoMudarOdometro()">
+          <input type="number" id="kmFinal" inputmode="numeric" enterkeyhint="next" placeholder="Ex: 45380" oninput="UIController.aoMudarOdometro()">
         </div>
       </div>
 
       <div class="grid-2">
         <div>
           <label for="kmTotalInput">KM Rodado</label>
-          <input type="number" id="kmTotalInput" inputmode="numeric" placeholder="Ou digite direto" oninput="UIController.calcularCombustivelPorConsumo()">
+          <input type="number" id="kmTotalInput" inputmode="numeric" enterkeyhint="next" placeholder="Ou digite direto" oninput="UIController.calcularCombustivelPorConsumo()">
         </div>
         <div>
           <label for="corridas">Nº de Corridas</label>
-          <input type="number" id="corridas" inputmode="numeric" placeholder="Ex: 18">
+          <input type="number" id="corridas" inputmode="numeric" enterkeyhint="next" placeholder="Ex: 18">
         </div>
       </div>
     </div>
@@ -244,22 +245,22 @@
         <div class="grid-3">
           <div>
             <label for="ganhoUber">Uber (R$)</label>
-            <input type="number" id="ganhoUber" step="0.01" inputmode="decimal" placeholder="0,00" oninput="UIController.somarApps()">
+            <input type="number" id="ganhoUber" step="0.01" inputmode="decimal" enterkeyhint="next" placeholder="0,00" oninput="UIController.somarApps()">
           </div>
           <div>
             <label for="ganho99">99 (R$)</label>
-            <input type="number" id="ganho99" step="0.01" inputmode="decimal" placeholder="0,00" oninput="UIController.somarApps()">
+            <input type="number" id="ganho99" step="0.01" inputmode="decimal" enterkeyhint="next" placeholder="0,00" oninput="UIController.somarApps()">
           </div>
           <div>
             <label for="ganhoOutros">Pix/Outros</label>
-            <input type="number" id="ganhoOutros" step="0.01" inputmode="decimal" placeholder="0,00" oninput="UIController.somarApps()">
+            <input type="number" id="ganhoOutros" step="0.01" inputmode="decimal" enterkeyhint="next" placeholder="0,00" oninput="UIController.somarApps()">
           </div>
         </div>
       </div>
 
       <div>
         <label for="faturamento">Total Bruto Recebido no Dia (R$)</label>
-        <input type="number" id="faturamento" step="0.01" inputmode="decimal" placeholder="Ex: 350,00">
+        <input type="number" id="faturamento" step="0.01" inputmode="decimal" enterkeyhint="next" placeholder="Ex: 350,00">
       </div>
     </div>
 
@@ -274,11 +275,11 @@
         <div class="grid-2">
           <div>
             <label for="consumoKmL">Consumo (KM/L)</label>
-            <input type="number" id="consumoKmL" step="0.1" inputmode="decimal" placeholder="Ex: 10.5" oninput="UIController.calcularCombustivelPorConsumo()">
+            <input type="number" id="consumoKmL" step="0.1" inputmode="decimal" enterkeyhint="next" placeholder="Ex: 10.5" oninput="UIController.calcularCombustivelPorConsumo()">
           </div>
           <div>
             <label for="precoLitro">Preço Litro (R$)</label>
-            <input type="number" id="precoLitro" step="0.01" inputmode="decimal" placeholder="Ex: 5.89" oninput="UIController.calcularCombustivelPorConsumo()">
+            <input type="number" id="precoLitro" step="0.01" inputmode="decimal" enterkeyhint="next" placeholder="Ex: 5.89" oninput="UIController.calcularCombustivelPorConsumo()">
           </div>
         </div>
       </div>
@@ -286,22 +287,22 @@
       <div class="grid-2">
         <div>
           <label for="combustivel">Combustível (R$)</label>
-          <input type="number" id="combustivel" step="0.01" inputmode="decimal" placeholder="0,00">
+          <input type="number" id="combustivel" step="0.01" inputmode="decimal" enterkeyhint="next" placeholder="0,00">
         </div>
         <div>
           <label for="alimentacao">Alimentação (R$)</label>
-          <input type="number" id="alimentacao" step="0.01" inputmode="decimal" placeholder="0,00">
+          <input type="number" id="alimentacao" step="0.01" inputmode="decimal" enterkeyhint="next" placeholder="0,00">
         </div>
       </div>
 
       <div class="grid-2">
         <div>
           <label for="diariaCarro">Aluguel / Diária (R$)</label>
-          <input type="number" id="diariaCarro" step="0.01" inputmode="decimal" placeholder="0,00">
+          <input type="number" id="diariaCarro" step="0.01" inputmode="decimal" enterkeyhint="next" placeholder="0,00">
         </div>
         <div>
           <label for="outrosGastos">Outros Gastos (R$)</label>
-          <input type="number" id="outrosGastos" step="0.01" inputmode="decimal" placeholder="0,00">
+          <input type="number" id="outrosGastos" step="0.01" inputmode="decimal" enterkeyhint="next" placeholder="0,00">
         </div>
       </div>
 
@@ -310,7 +311,7 @@
           <span>Reserva Manutenção / KM</span>
           <span class="label-hint">Pneus, óleo, freios</span>
         </label>
-        <input type="number" id="custoKm" step="0.01" inputmode="decimal" value="0.15">
+        <input type="number" id="custoKm" step="0.01" inputmode="decimal" enterkeyhint="next" value="0.15">
       </div>
 
       <div>
@@ -325,7 +326,7 @@
           <button type="button" class="tag-pill" data-tag="🔧 Oficina" aria-pressed="false" onclick="UIController.alternarTagTurno('🔧 Oficina')">🔧 Oficina</button>
           <button type="button" class="tag-pill" data-tag="🛣️ Viagem" aria-pressed="false" onclick="UIController.alternarTagTurno('🛣️ Viagem')">🛣️ Viagem</button>
         </div>
-        <input type="text" id="obsTurno" maxlength="60" placeholder="Ex: Aeroporto movimentado / Chuva à tarde">
+        <input type="text" id="obsTurno" maxlength="60" enterkeyhint="done" placeholder="Ex: Aeroporto movimentado / Chuva à tarde">
       </div>
 
       <button type="button" class="btn-uber-green" onclick="UIController.salvarFechamento()">
@@ -432,10 +433,10 @@
 <div id="toast" class="uber-toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <!-- MÓDULOS JAVASCRIPT DO APP -->
-<script src="./js/storage.js?v=16"></script>
-<script src="./js/calendar.js?v=16"></script>
-<script src="./js/finance.js?v=16"></script>
-<script src="./js/sheet.js?v=16"></script>
-<script src="./js/ui.js?v=16"></script>
+<script src="./js/storage.js?v=17"></script>
+<script src="./js/calendar.js?v=17"></script>
+<script src="./js/finance.js?v=17"></script>
+<script src="./js/sheet.js?v=17"></script>
+<script src="./js/ui.js?v=17"></script>
 </body>
 </html>

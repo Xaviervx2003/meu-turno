@@ -1,4 +1,38 @@
 /* ==========================================================================
+   MÓDULO ANDROID NATIVE: SCREEN WAKE LOCK CONTROLLER
+   Mantém a tela acesa no suporte veicular durante o turno ou no simulador
+   ========================================================================== */
+const AndroidWakeLock = {
+  _sentinel: null,
+  async ativar() {
+    if (!('wakeLock' in navigator)) return;
+    try {
+      if (!this._sentinel) {
+        this._sentinel = await navigator.wakeLock.request('screen');
+        this._sentinel.addEventListener('release', () => {
+          this._sentinel = null;
+        });
+      }
+    } catch {
+      // Ignora erro caso bateria esteja em economia crítica ou sem suporte
+    }
+  },
+  async liberar() {
+    if (this._sentinel) {
+      try { await this._sentinel.release(); } catch {}
+      this._sentinel = null;
+    }
+  },
+  sincronizar(turnoAtivo, painelSimuladorAberto = false) {
+    if (turnoAtivo || painelSimuladorAberto) {
+      this.ativar();
+    } else {
+      this.liberar();
+    }
+  }
+};
+
+/* ==========================================================================
    MÓDULO 5: UI CONTROLLER (INTERAÇÃO, NAVEGAÇÃO, SEMANAS DO ANO & RENDERIZAÇÃO)
    ========================================================================== */
 const UIController = {
@@ -20,6 +54,10 @@ const UIController = {
   },
 
   async iniciar() {
+    try {
+      history.replaceState({ aba: 'painel' }, '');
+    } catch {}
+
     document.getElementById('dataTurno').value = this.hojeISO();
     document.getElementById('custoKm').value = StorageService.obterNumero(KEYS.CUSTO_KM, DEFAULTS.CUSTO_KM);
 
@@ -40,6 +78,28 @@ const UIController = {
     this.sincronizarIconePrivacidade();
 
     this.atualizarTudo();
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const acao = urlParams.get('acao');
+    if (acao === 'iniciar') {
+      this.navegarAba('painel');
+      if (!StorageService.obterTurnoAtivo()) {
+        setTimeout(() => this.iniciarTurnoNaPista(), 250);
+      }
+    } else if (acao === 'fechar') {
+      if (StorageService.obterTurnoAtivo()) {
+        this.prepararEncerramentoTurno();
+      } else {
+        this.navegarAba('fechar');
+      }
+    } else if (acao === 'simulador') {
+      this.navegarAba('painel');
+      const painelSim = document.getElementById('painelSimuladorCorrida');
+      if (painelSim && !painelSim.classList.contains('open')) {
+        this.togglePainel('painelSimuladorCorrida');
+      }
+      setTimeout(() => document.getElementById('simValor')?.focus(), 300);
+    }
 
     setInterval(() => {
       if (StorageService.obterTurnoAtivo() && !Sheet._resolver) this.renderizarTurnoVivo();
@@ -88,19 +148,31 @@ const UIController = {
     this._toastTimer = setTimeout(() => { toast.style.display = 'none'; }, 2600);
   },
 
-  navegarAba(aba) {
+  navegarAba(aba, registrarHistorico = true) {
     document.querySelectorAll('.tab-view').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(b => {
       b.classList.remove('active');
       b.removeAttribute('aria-current');
     });
 
-    document.getElementById(`tab-${aba}`).classList.add('active');
+    const view = document.getElementById(`tab-${aba}`);
+    if (view) view.classList.add('active');
     const btnAba = document.getElementById(`nav-${aba}`);
     if (btnAba) {
       btnAba.classList.add('active');
       btnAba.setAttribute('aria-current', 'page');
     }
+
+    if (registrarHistorico) {
+      try {
+        if (aba === 'painel') {
+          history.replaceState({ aba: 'painel' }, '');
+        } else {
+          history.pushState({ aba }, '');
+        }
+      } catch {}
+    }
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
   },
 
@@ -117,6 +189,13 @@ const UIController = {
     document.querySelectorAll(`[aria-controls="${id}"]`).forEach(btn => {
       btn.setAttribute('aria-expanded', String(aberto));
     });
+
+    if (id === 'painelSimuladorCorrida') {
+      AndroidWakeLock.sincronizar(Boolean(StorageService.obterTurnoAtivo()), aberto);
+      if (aberto) {
+        setTimeout(() => document.getElementById('simValor')?.focus(), 150);
+      }
+    }
   },
 
   formatarDuracaoMs(ms) {
@@ -138,6 +217,9 @@ const UIController = {
     const card = document.getElementById('cardTurnoVivo');
     const dot = document.getElementById('topStatusDot');
     const txt = document.getElementById('topStatusText');
+    const simAberto = document.getElementById('painelSimuladorCorrida')?.classList.contains('open');
+
+    AndroidWakeLock.sincronizar(Boolean(ativo), Boolean(simAberto));
 
     if (!ativo) {
       card.classList.remove('active-shift', 'paused-shift');
@@ -608,7 +690,7 @@ const UIController = {
         <span style="color:${corLucro}">${FinanceEngine.moeda(reg.lucroLiquido)}</span>
       </div>
       <button type="button" class="btn-uber-ghost mt-16" onclick="UIController.copiarWhatsApp()">
-        📲 Copiar Resumo para WhatsApp
+        📤 Compartilhar Resumo (WhatsApp)
       </button>
     `;
 
@@ -622,11 +704,27 @@ const UIController = {
       `🏁 *Corridas:* ${reg.corridas} (Ticket: ${FinanceEngine.moeda(reg.ticketMedio, true)})`;
   },
 
+  async compartilharTexto(texto, titulo = 'Meu Turno — Fechamento') {
+    if (!texto) return;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text: texto });
+        return;
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(texto);
+      this.notificar('Resumo copiado para colar no WhatsApp!');
+    } catch {
+      this.notificar('Não foi possível compartilhar ou copiar.');
+    }
+  },
+
   copiarWhatsApp() {
     if (!this.ultimoTextoWhatsApp) return;
-    navigator.clipboard.writeText(this.ultimoTextoWhatsApp).then(() => {
-      this.notificar('Resumo copiado para colar no WhatsApp!');
-    });
+    this.compartilharTexto(this.ultimoTextoWhatsApp, 'Meu Turno — Resumo do Dia');
   },
 
   /* ==========================================================================
@@ -1843,7 +1941,7 @@ const UIController = {
               <!-- Barra Padronizada e Ergonômica de 3 Ações -->
               <div class="act-actions-bar">
                 <button type="button" class="act-action-btn" onclick="UIController.compartilharTurnoId('${idSeguro}')">
-                  📲 WhatsApp
+                  📤 Compartilhar
                 </button>
                 <button type="button" class="act-action-btn" onclick="UIController.editarTurno('${idSeguro}')">
                   ✏️ Editar
@@ -1869,7 +1967,7 @@ const UIController = {
               <span>Bruto: ${FinanceEngine.moeda(grupo.somaBruto)}</span>
               <span>${grupo.somaKm.toFixed(0)} km</span>
             </span>
-            <button type="button" class="chip-btn" onclick="UIController.compartilharSemana('${grupo.chaveSemana}')" title="Copiar Resumo da Semana p/ WhatsApp">📲 Copiar</button>
+            <button type="button" class="chip-btn" onclick="UIController.compartilharSemana('${grupo.chaveSemana}')" title="Compartilhar Resumo da Semana">📤 Compartilhar</button>
           </div>
         </div>
         ${cardsHTML}
@@ -1895,9 +1993,7 @@ const UIController = {
       `🛣️ *KM Total:* ${g.somaKm.toFixed(0)} km (Líq: ${FinanceEngine.moeda(liqKm, true)}/km)` +
       (g.somaHoras > 0 ? `\n⏱️ *Horas:* ${g.somaHoras.toFixed(1)}h (Líq: ${FinanceEngine.moeda(liqHora, true)}/h)` : '');
 
-    navigator.clipboard.writeText(texto).then(() => {
-      this.notificar(`Resumo da Semana ${g.numStr} copiado p/ WhatsApp!`);
-    });
+    this.compartilharTexto(texto, `Meu Turno — Semana ${g.numStr}`);
   },
 
   compartilharTurnoId(id) {
@@ -1911,9 +2007,7 @@ const UIController = {
       `🛣️ *KM:* ${reg.kmTotal} km (Líq: ${FinanceEngine.moeda(reg.liquidoKm, true)}/km)` +
       (reg.horas > 0 ? `\n⏱️ *Horas:* ${reg.horas}h (Líq: ${FinanceEngine.moeda(reg.liquidoHora, true)}/h)` : '');
 
-    navigator.clipboard.writeText(texto).then(() => {
-      this.notificar(`Resumo de ${reg.data} copiado p/ WhatsApp!`);
-    });
+    this.compartilharTexto(texto, `Meu Turno — Fechamento ${reg.data}`);
   },
 
   editarTurno(id) {
@@ -2274,10 +2368,38 @@ const UIController = {
 
 window.addEventListener('DOMContentLoaded', () => UIController.iniciar());
 
+// Android Back Button / Predictive Back via History API
+window.addEventListener('popstate', (e) => {
+  if (Sheet._resolver) {
+    Sheet.fechar(null, false);
+    return;
+  }
+  const aba = (e.state && e.state.aba) ? e.state.aba : 'painel';
+  UIController.navegarAba(aba, false);
+});
+
+// Soft Keyboard Enter handling para avançar ao próximo input (enterkeyhint="next")
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target && e.target.matches('input[enterkeyhint="next"]')) {
+    e.preventDefault();
+    const container = e.target.closest('form') || e.target.closest('.card') || e.target.closest('.tab-view') || document;
+    const inputs = Array.from(container.querySelectorAll('input:not([type="hidden"]):not([disabled]), button:not([disabled])'));
+    const idx = inputs.indexOf(e.target);
+    if (idx > -1 && idx + 1 < inputs.length) {
+      inputs[idx + 1].focus();
+    }
+  }
+});
+
 document.addEventListener('visibilitychange', () => {
   document.body.classList.toggle('app-em-background', document.hidden);
-  if (!document.hidden && StorageService.obterTurnoAtivo() && !Sheet._resolver) {
-    UIController.renderizarTurnoVivo();
+  if (!document.hidden) {
+    const turnoAtivo = Boolean(StorageService.obterTurnoAtivo());
+    const simAberto = document.getElementById('painelSimuladorCorrida')?.classList.contains('open');
+    AndroidWakeLock.sincronizar(turnoAtivo, Boolean(simAberto));
+    if (turnoAtivo && !Sheet._resolver) {
+      UIController.renderizarTurnoVivo();
+    }
   }
 });
 

@@ -32,6 +32,7 @@ const Sheet = {
       document.body.classList.add('sheet-aberto');
       this.el('sheetOverlay').classList.add('open');
       this.el('sheet').classList.add('open');
+      try { history.pushState({ modal: 'sheet' }, ''); } catch {}
 
       setTimeout(() => {
         if (aoAbrir) {
@@ -50,7 +51,7 @@ const Sheet = {
     this.fechar(valor);
   },
 
-  fechar(valor) {
+  fechar(valor, voltarHistorico = true) {
     this.el('sheetOverlay').classList.remove('open');
     this.el('sheet').classList.remove('open');
     document.body.classList.remove('sheet-aberto');
@@ -59,6 +60,9 @@ const Sheet = {
     this._resolver = null;
     this._coletar = null;
     this._focoAnterior = null;
+    if (voltarHistorico && history.state && history.state.modal === 'sheet') {
+      try { history.back(); } catch {}
+    }
     if (focoAnterior && typeof focoAnterior.focus === 'function') {
       try { focoAnterior.focus(); } catch {}
     }
@@ -82,7 +86,7 @@ const Sheet = {
       <div class="sheet-input-wrap" id="sheetInputWrap">
         ${prefixo ? `<span class="sheet-affix" aria-hidden="true">${prefixo}</span>` : ''}
         <input id="sheetInput" type="number" step="${inteiro ? '1' : '0.01'}"
-               aria-label="${rotuloAria}"
+               aria-label="${rotuloAria}" enterkeyhint="done"
                inputmode="${inteiro ? 'numeric' : 'decimal'}" placeholder="${placeholder}" value="${valorInicial}">
         ${sufixo ? `<span class="sheet-affix" aria-hidden="true">${sufixo}</span>` : ''}
       </div>
