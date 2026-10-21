@@ -6,19 +6,22 @@ const KEYS = {
   TURNO_ATIVO: 'meu_turno_ativo',
   META_DIARIA: 'meu_turno_meta_diaria',
   META_SEMANAL: 'meu_turno_meta_semanal',
+  META_MENSAL: 'meu_turno_meta_mensal',
   CUSTO_KM: 'meu_turno_custo_km',
   CONSUMO_KML: 'meu_turno_consumo_kml',
   PRECO_LITRO: 'meu_turno_preco_litro',
   RASCUNHO_FORM: 'meu_turno_rascunho_form',
   ULTIMO_BACKUP: 'meu_turno_ultimo_backup',
   KM_PROX_OLEO: 'meu_turno_km_prox_oleo',
-  CUSTO_FIXO_MES: 'meu_turno_custo_fixo_mes'
+  CUSTO_FIXO_MES: 'meu_turno_custo_fixo_mes',
+  BAIXA_MANUT: 'meu_turno_baixa_manut'
 };
 
 const DEFAULTS = {
   CUSTO_KM: 0.15,
   META_DIARIA: 200.00,
-  META_SEMANAL: 1200.00
+  META_SEMANAL: 1200.00,
+  META_MENSAL: 5000.00
 };
 
 const StorageService = {
@@ -209,7 +212,7 @@ const Rascunho = {
   CAMPOS: [
     'horasTrabalhadas', 'kmInicial', 'kmFinal', 'kmTotalInput', 'corridas',
     'ganhoUber', 'ganho99', 'ganhoOutros', 'faturamento',
-    'combustivel', 'alimentacao', 'diariaCarro', 'outrosGastos'
+    'combustivel', 'alimentacao', 'diariaCarro', 'outrosGastos', 'obsTurno'
   ],
 
   iniciarMonitoramento() {

@@ -61,7 +61,7 @@ body {
 .app-shell {
   width: 100%;
   max-width: 480px;
-  padding: 12px 16px 24px;
+  padding: 0 16px 24px;
 }
 
 /* Classes Utilitárias de Tipografia e Cores Padronizadas */
@@ -116,23 +116,13 @@ body {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: var(--space-2);
-  padding: max(6px, env(safe-area-inset-top)) 0 var(--space-3);
+  padding: max(10px, env(safe-area-inset-top)) 0 10px;
+  margin-bottom: 12px;
   position: sticky;
   top: 0;
-  background: rgba(0, 0, 0, 0.94);
-  backdrop-filter: blur(10px);
+  background: var(--uber-black);
+  border-bottom: 1px solid var(--uber-border);
   z-index: 50;
-}
-/* Degradê suave abaixo da barra: o conteúdo some aos poucos ao rolar, sem corte seco */
-.uber-topbar::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -14px;
-  height: 14px;
-  background: linear-gradient(rgba(0, 0, 0, 0.94), rgba(0, 0, 0, 0));
-  pointer-events: none;
 }
 
 .status-dot-wrap {
@@ -143,6 +133,7 @@ body {
   font-size: 0.78rem;
   font-weight: 700;
   color: var(--uber-muted);
+  white-space: nowrap;
 }
 
 .status-dot {
@@ -446,6 +437,90 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.kpi-tile.clickable {
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.kpi-tile.clickable:active {
+  background: #282828;
+  border-color: var(--uber-white);
+}
+
+/* Barra de Divisão por App (Uber / 99 / Pix) */
+.app-split-box {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--uber-surface-elevated);
+  border: 1px solid var(--uber-border);
+  font-size: 0.74rem;
+}
+.app-split-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-weight: 700;
+  color: var(--uber-muted);
+}
+.app-split-labels b {
+  color: var(--uber-white);
+}
+.app-split-track {
+  display: flex;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  background: var(--uber-black);
+  gap: 2px;
+}
+.app-split-seg {
+  height: 100%;
+}
+.app-split-seg.uber   { background: var(--uber-blue); }
+.app-split-seg.pop99  { background: var(--uber-yellow); }
+.app-split-seg.outros { background: var(--uber-green); }
+
+/* Pílulas de Tags Rápidas do Dia */
+.shift-tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.tag-pill {
+  background: var(--uber-surface-elevated);
+  color: var(--uber-muted);
+  border: 1px solid var(--uber-border);
+  border-radius: var(--radius-pill);
+  padding: 6px 10px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.tag-pill.active {
+  background: var(--uber-white);
+  color: var(--uber-black);
+  border-color: var(--uber-white);
+  font-weight: 800;
+}
+.act-tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+.act-tag-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--uber-muted);
+  background: var(--uber-surface-elevated);
+  border: 1px solid var(--uber-border);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
 }
 
 /* ==========================================================================

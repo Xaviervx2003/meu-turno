@@ -12,6 +12,7 @@ const UIController = {
   ultimoTextoWhatsApp: '',
   deferredPrompt: null,
   idTurnoEditando: null,
+  tagsSelecionadas: [],
 
   hojeISO() {
     const d = new Date();
@@ -126,6 +127,8 @@ const UIController = {
     const pausaTotalMs = (ativo.totalPausaMs || 0) + pausaAtualMs;
     const tempoLiquidoMs = Math.max(60000, (agoraMs - ativo.inicioMs) - pausaTotalMs);
     const totalGastosParciais = (ativo.combustivel || 0) + (ativo.alimentacao || 0) + (ativo.outrosGastos || 0);
+    const brutoParcial = ativo.faturamentoParcial || 0;
+    const lucroParcial = brutoParcial - totalGastosParciais;
 
     card.classList.toggle('active-shift', !emPausa);
     card.classList.toggle('paused-shift', emPausa);
@@ -148,38 +151,38 @@ const UIController = {
     card.innerHTML = `
       <div class="card-header-row compact">
         ${badgeHTML}
-        <span class="status-badge">⏱️ Rodando: ${this.formatarDuracaoMs(tempoLiquidoMs)}</span>
+        <span class="status-badge">⏱️ ${this.formatarDuracaoMs(tempoLiquidoMs)}${ativo.kmInicial ? ` • KM ${ativo.kmInicial}` : ''}</span>
       </div>
       <div class="kpi-row mb-12">
-        <div class="kpi-tile">
-          <span>KM Inicial</span>
-          <strong>${ativo.kmInicial || '—'}</strong>
+        <div class="kpi-tile clickable" onclick="UIController.lancarGanhoParcial()" title="Toque para atualizar quanto já fez hoje">
+          <span>💰 Bruto Parcial</span>
+          <strong>${FinanceEngine.moeda(brutoParcial)}</strong>
         </div>
         <div class="kpi-tile">
-          <span>Gastos Rua</span>
+          <span>💸 Gastos Rua</span>
           <strong>${FinanceEngine.moeda(totalGastosParciais)}</strong>
         </div>
-        <div class="kpi-tile">
-          <span>Pausa</span>
-          <strong class="${pausaTotalMs > 0 ? 'text-yellow' : ''}">${pausaTotalMs > 0 ? this.formatarDuracaoMs(pausaTotalMs) : '0m'}</strong>
+        <div class="kpi-tile clickable" onclick="UIController.lancarGanhoParcial()">
+          <span>✅ Livre Agora</span>
+          <strong class="${lucroParcial >= 0 ? 'text-green' : 'text-red'}">${FinanceEngine.moeda(lucroParcial)}</strong>
         </div>
       </div>
 
       ${botaoPausaHTML}
 
-      <div class="live-shift-section-label">Anote gastos rápidos na rua:</div>
+      <div class="live-shift-section-label">Lançar rápido na rua (toque p/ anotar):</div>
       <div class="quick-expense-grid">
+        <button class="quick-exp-btn" onclick="UIController.lancarGanhoParcial()">
+          <span>💰</span>+ Ganhos
+          <small>${FinanceEngine.moedaCurta(brutoParcial)}</small>
+        </button>
         <button class="quick-exp-btn" onclick="UIController.lancarGastoRapido('combustivel', 'Combustível / GNV', '⛽')">
-          <span>⛽</span>+ Combustível
+          <span>⛽</span>+ Combust.
           <small>${FinanceEngine.moedaCurta(ativo.combustivel || 0)}</small>
         </button>
         <button class="quick-exp-btn" onclick="UIController.lancarGastoRapido('alimentacao', 'Alimentação / Água', '🍔')">
           <span>🍔</span>+ Refeição
           <small>${FinanceEngine.moedaCurta(ativo.alimentacao || 0)}</small>
-        </button>
-        <button class="quick-exp-btn" onclick="UIController.lancarGastoRapido('outrosGastos', 'Pedágio / Lavagem / Outros', '🧼')">
-          <span>🧼</span>+ Outros
-          <small>${FinanceEngine.moedaCurta(ativo.outrosGastos || 0)}</small>
         </button>
       </div>
 
@@ -245,13 +248,42 @@ const UIController = {
       kmInicial,
       pausadoEmMs: null,
       totalPausaMs: 0,
+      faturamentoParcial: 0,
       combustivel: 0,
       alimentacao: 0,
       outrosGastos: 0
     });
 
     this.renderizarTurnoVivo();
+    this.atualizarPainel();
     this.notificar('Bom trabalho! Turno iniciado.');
+  },
+
+  async lancarGanhoParcial() {
+    const ativo = StorageService.obterTurnoAtivo();
+    if (!ativo) return;
+
+    const atual = ativo.faturamentoParcial || 0;
+    const valor = await Sheet.pedirValor({
+      icone: '💰',
+      titulo: 'Faturamento parcial de hoje',
+      subtitulo: 'Digite quanto está marcando de Bruto total nos apps agora (ou use os botões p/ somar). A Meta de Hoje atualiza na hora!',
+      valorInicial: atual > 0 ? String(atual) : '',
+      placeholder: '0,00',
+      prefixo: 'R$',
+      atalhos: [50, 100, 150, 200],
+      modoAtalho: 'somar',
+      permitirVazio: true,
+      textoOk: 'Atualizar parcial',
+      variante: 'green'
+    });
+    if (valor === null) return;
+
+    ativo.faturamentoParcial = Number(valor.toFixed(2));
+    StorageService.salvarTurnoAtivo(ativo);
+    this.renderizarTurnoVivo();
+    this.atualizarPainel();
+    this.notificar(`Bruto parcial atualizado: ${FinanceEngine.moeda(valor)}!`);
   },
 
   async lancarGastoRapido(campo, nomeAmigavel, icone) {
@@ -274,6 +306,7 @@ const UIController = {
     ativo[campo] = Number(((ativo[campo] || 0) + valor).toFixed(2));
     StorageService.salvarTurnoAtivo(ativo);
     this.renderizarTurnoVivo();
+    this.atualizarPainel();
     this.notificar(`+ ${FinanceEngine.moeda(valor)} somado em ${nomeAmigavel}!`);
   },
 
@@ -289,6 +322,7 @@ const UIController = {
 
     if (ativo.kmInicial > 0) document.getElementById('kmInicial').value = ativo.kmInicial;
     document.getElementById('horasTrabalhadas').value = horasDecorridas;
+    if (ativo.faturamentoParcial > 0) document.getElementById('faturamento').value = ativo.faturamentoParcial.toFixed(2);
     if (ativo.combustivel > 0) document.getElementById('combustivel').value = ativo.combustivel.toFixed(2);
     if (ativo.alimentacao > 0) document.getElementById('alimentacao').value = ativo.alimentacao.toFixed(2);
     if (ativo.outrosGastos > 0) document.getElementById('outrosGastos').value = ativo.outrosGastos.toFixed(2);
@@ -367,7 +401,24 @@ const UIController = {
     return `${d}/${m}/${y}`;
   },
 
+  alternarTagTurno(tag) {
+    const idx = this.tagsSelecionadas.indexOf(tag);
+    if (idx === -1) {
+      this.tagsSelecionadas.push(tag);
+    } else {
+      this.tagsSelecionadas.splice(idx, 1);
+    }
+    this.sincronizarPillsTags();
+  },
+
+  sincronizarPillsTags() {
+    document.querySelectorAll('#listaTagsTurno .tag-pill').forEach(btn => {
+      btn.classList.toggle('active', this.tagsSelecionadas.includes(btn.dataset.tag));
+    });
+  },
+
   async salvarFechamento() {
+    const obsTexto = (document.getElementById('obsTurno')?.value || '').trim();
     const entrada = {
       dataISO: document.getElementById('dataTurno').value,
       horas: this.lerNumero('horasTrabalhadas'),
@@ -375,6 +426,9 @@ const UIController = {
       kmFim: this.lerNumero('kmFinal'),
       kmDireto: this.lerNumero('kmTotalInput'),
       corridas: Math.round(this.lerNumero('corridas')),
+      ganhoUber: this.lerNumero('ganhoUber'),
+      ganho99: this.lerNumero('ganho99'),
+      ganhoOutros: this.lerNumero('ganhoOutros'),
       faturamento: this.lerNumero('faturamento'),
       combustivel: this.lerNumero('combustivel'),
       alimentacao: this.lerNumero('alimentacao'),
@@ -404,6 +458,9 @@ const UIController = {
       kmTotal: calc.kmTotal,
       horas: entrada.horas,
       corridas: entrada.corridas,
+      ganhoUber: Number(entrada.ganhoUber.toFixed(2)),
+      ganho99: Number(entrada.ganho99.toFixed(2)),
+      ganhoOutros: Number(entrada.ganhoOutros.toFixed(2)),
       faturamento: Number(entrada.faturamento.toFixed(2)),
       custosTotais: calc.custosTotais,
       combustivel: Number(entrada.combustivel.toFixed(2)),
@@ -415,7 +472,9 @@ const UIController = {
       brutoKm: calc.brutoKm,
       liquidoKm: calc.liquidoKm,
       liquidoHora: calc.liquidoHora,
-      ticketMedio: calc.ticketMedio
+      ticketMedio: calc.ticketMedio,
+      tags: [...this.tagsSelecionadas],
+      obs: obsTexto
     };
 
     const turnos = StorageService.obterTurnos();
@@ -429,6 +488,8 @@ const UIController = {
         if (!StorageService.salvarTurnos(turnos)) return;
         this.cancelarEdicaoTurno(false);
         Rascunho.limpar();
+        this.tagsSelecionadas = [];
+        this.sincronizarPillsTags();
         this.exibirRecibo(registro, calc, avaliacao);
         this.atualizarTudo();
         this.notificar('Turno atualizado com sucesso!');
@@ -458,6 +519,8 @@ const UIController = {
 
     StorageService.salvarTurnoAtivo(null);
     Rascunho.limpar();
+    this.tagsSelecionadas = [];
+    this.sincronizarPillsTags();
     StorageGuard.pedirPersistencia();
 
     this.exibirRecibo(registro, calc, avaliacao);
@@ -520,6 +583,8 @@ const UIController = {
     // Sincroniza automaticamente a aba do Card de Meta com o período escolhido
     if (periodo === '7dias') {
       this.abaMetaAtiva = 'semana';
+    } else if (periodo === 'mes') {
+      this.abaMetaAtiva = 'mes';
     } else if (periodo === 'hoje') {
       this.abaMetaAtiva = 'dia';
     }
@@ -535,6 +600,8 @@ const UIController = {
   editarMetaAtiva() {
     if (this.abaMetaAtiva === 'semana') {
       this.editarMetaSemanal();
+    } else if (this.abaMetaAtiva === 'mes') {
+      this.editarMetaMensal();
     } else {
       this.editarMetaDiaria();
     }
@@ -559,6 +626,7 @@ const UIController = {
 
   atualizarPainel() {
     const turnos = StorageService.obterTurnos();
+    const ativo = StorageService.obterTurnoAtivo();
     const agora = new Date();
     const hojeStr = agora.toLocaleDateString('pt-BR');
 
@@ -570,10 +638,16 @@ const UIController = {
       badgeSemanaTopo.title = `Semana ${semanaHoje.numStr}/${semanaHoje.totalAno} (${semanaHoje.intervaloCurto})`;
     }
 
-    // Lucro de hoje para a pílula central superior
-    const lucroHoje = turnos
+    // Inclui lucro parcial do turno ao vivo na rua (se houver faturamento parcial informado)
+    const lucroParcialVivo = ativo && (ativo.faturamentoParcial > 0 || ativo.combustivel > 0 || ativo.alimentacao > 0 || ativo.outrosGastos > 0)
+      ? (ativo.faturamentoParcial || 0) - ((ativo.combustivel || 0) + (ativo.alimentacao || 0) + (ativo.outrosGastos || 0))
+      : 0;
+
+    const lucroSalvoHoje = turnos
       .filter(t => t.data === hojeStr)
       .reduce((acc, t) => acc + (parseFloat(t.lucroLiquido) || 0), 0);
+
+    const lucroHoje = lucroSalvoHoje + (ativo && ativo.faturamentoParcial > 0 ? lucroParcialVivo : 0);
 
     document.getElementById('pillLucroHoje').textContent = FinanceEngine.moeda(lucroHoje);
 
@@ -610,14 +684,19 @@ const UIController = {
     const resumoAnterior = FinanceEngine.resumirLista(filtradosAnteriores);
 
     const elLucro = document.getElementById('kpiLucroLiquido');
-    elLucro.textContent = FinanceEngine.moeda(resumoAtual.somaLucro);
-    elLucro.style.color = resumoAtual.somaLucro >= 0 ? 'var(--uber-white)' : 'var(--uber-red)';
+    const lucroExibido = this.periodoAtual === 'hoje' ? lucroHoje : resumoAtual.somaLucro;
+    elLucro.textContent = FinanceEngine.moeda(lucroExibido);
+    elLucro.style.color = lucroExibido >= 0 ? 'var(--uber-white)' : 'var(--uber-red)';
 
-    document.getElementById('kpiBruto').textContent = FinanceEngine.moeda(resumoAtual.somaBruto);
+    document.getElementById('kpiBruto').textContent = FinanceEngine.moeda(
+      this.periodoAtual === 'hoje' && ativo?.faturamentoParcial > 0
+        ? resumoAtual.somaBruto + ativo.faturamentoParcial
+        : resumoAtual.somaBruto
+    );
     document.getElementById('kpiCustos').textContent = FinanceEngine.moeda(resumoAtual.somaCustos);
     document.getElementById('kpiTurnosCount').textContent =
       this.periodoAtual === 'hoje'
-        ? `${filtrados.length} turno${filtrados.length === 1 ? '' : 's'}`
+        ? `${filtrados.length} turno${filtrados.length === 1 ? '' : 's'}${ativo ? ' + ao vivo' : ''}`
         : `${resumoAtual.diasTrabalhados}d • ${filtrados.length}t`;
 
     document.getElementById('kpiMediaKm').textContent = FinanceEngine.moeda(resumoAtual.mediaKm);
@@ -625,13 +704,44 @@ const UIController = {
       resumoAtual.somaHoras > 0 ? `${FinanceEngine.moeda(resumoAtual.mediaHora)}/h` : '—';
     document.getElementById('kpiKmRodado').textContent = `${resumoAtual.somaKm.toFixed(0)} km`;
 
+    this.renderizarDivisaoApps(resumoAtual);
     this.renderizarComparativoPeriodo(resumoAtual.somaLucro, resumoAnterior.somaLucro, rotuloAnterior);
 
     const metaDiaria = StorageService.obterNumero(KEYS.META_DIARIA, DEFAULTS.META_DIARIA);
-    this.renderizarCardMetaUnificada(turnos, lucroHoje, metaDiaria, infoSemanaSelecionada);
-    this.renderizarGrafico7Dias(turnos, metaDiaria, infoSemanaSelecionada);
+    this.renderizarCardMetaUnificada(turnos, lucroHoje, metaDiaria, infoSemanaSelecionada, infoMesSelecionado);
+    this.renderizarGrafico7Dias(turnos, metaDiaria, infoSemanaSelecionada, infoMesSelecionado);
     this.renderizarInsightDiaSemana(turnos);
     this.renderizarFerramentasPista(turnos);
+  },
+
+  renderizarDivisaoApps(resumo) {
+    const box = document.getElementById('barraAppsPeriodo');
+    if (!box) return;
+
+    const totalApps = (resumo.somaUber || 0) + (resumo.soma99 || 0) + (resumo.somaOutrosApps || 0);
+    if (totalApps <= 0) {
+      box.classList.add('hidden');
+      return;
+    }
+
+    box.classList.remove('hidden');
+    const pctUber = Math.round(((resumo.somaUber || 0) / totalApps) * 100);
+    const pct99 = Math.round(((resumo.soma99 || 0) / totalApps) * 100);
+    const pctOutros = Math.max(0, 100 - pctUber - pct99);
+
+    const partes = [];
+    if (resumo.somaUber > 0) partes.push(`<span>🔵 Uber: <b>${pctUber}%</b> (${FinanceEngine.moedaCurta(resumo.somaUber)})</span>`);
+    if (resumo.soma99 > 0) partes.push(`<span>🟡 99: <b>${pct99}%</b> (${FinanceEngine.moedaCurta(resumo.soma99)})</span>`);
+    if (resumo.somaOutrosApps > 0) partes.push(`<span>🟢 Pix/Part.: <b>${pctOutros}%</b> (${FinanceEngine.moedaCurta(resumo.somaOutrosApps)})</span>`);
+
+    box.innerHTML = `
+      <div class="app-split-labels">${partes.join('')}</div>
+      <div class="app-split-track">
+        ${pctUber > 0 ? `<div class="app-split-seg uber" style="width:${pctUber}%"></div>` : ''}
+        ${pct99 > 0 ? `<div class="app-split-seg pop99" style="width:${pct99}%"></div>` : ''}
+        ${pctOutros > 0 ? `<div class="app-split-seg outros" style="width:${pctOutros}%"></div>` : ''}
+      </div>
+    `;
   },
 
   renderizarBarraNavegacaoCiclo(infoSemana, infoMes) {
@@ -708,21 +818,23 @@ const UIController = {
     `;
   },
 
-  renderizarCardMetaUnificada(turnos, lucroHoje, metaDiaria, infoSemanaSelecionada) {
+  renderizarCardMetaUnificada(turnos, lucroHoje, metaDiaria, infoSemanaSelecionada, infoMesSelecionado) {
     const btnDia = document.getElementById('btnAbaMetaDia');
     const btnSem = document.getElementById('btnAbaMetaSemana');
+    const btnMes = document.getElementById('btnAbaMetaMes');
     const btnEditar = document.getElementById('btnEditarMetaUnificada');
     const txtInfo = document.getElementById('txtMetaUnificadaInfo');
     const barra = document.getElementById('barraMetaUnificadaFill');
     const txtRitmo = document.getElementById('txtMetaUnificadaRitmo');
     if (!btnDia || !btnSem || !txtInfo || !barra || !txtRitmo) return;
 
-    const modoSemana = this.abaMetaAtiva === 'semana';
-    btnDia.classList.toggle('active', !modoSemana);
-    btnSem.classList.toggle('active', modoSemana);
-    btnEditar.textContent = modoSemana ? 'Editar semana' : 'Editar dia';
+    const modo = this.abaMetaAtiva || 'dia';
+    btnDia.classList.toggle('active', modo === 'dia');
+    btnSem.classList.toggle('active', modo === 'semana');
+    if (btnMes) btnMes.classList.toggle('active', modo === 'mes');
+    btnEditar.textContent = modo === 'semana' ? 'Editar sem.' : (modo === 'mes' ? 'Editar mês' : 'Editar dia');
 
-    if (!modoSemana) {
+    if (modo === 'dia') {
       const pctDia = metaDiaria > 0 ? Math.min(100, Math.max(0, (lucroHoje / metaDiaria) * 100)) : 0;
       const faltaDia = Math.max(0, metaDiaria - lucroHoje);
       const bateuDia = lucroHoje >= metaDiaria && metaDiaria > 0;
@@ -735,6 +847,39 @@ const UIController = {
         : `🎯 Meta Hoje: <strong>${FinanceEngine.moeda(metaDiaria)}</strong> <span class="text-muted-sm">(Falta ${FinanceEngine.moeda(faltaDia)})</span>`;
 
       txtRitmo.innerHTML = this.obterTextoPrevisaoMetaDiaria(turnos, faltaDia, bateuDia);
+      return;
+    }
+
+    if (modo === 'mes') {
+      const infoM = this.periodoAtual === 'mes' && infoMesSelecionado
+        ? infoMesSelecionado
+        : CalendarEngine.obterMesPorOffset(0);
+
+      const turnosMes = turnos.filter(t => CalendarEngine.pertenceAoMes(this.parseData(t), infoM));
+      const resumoMes = FinanceEngine.resumirLista(turnosMes);
+      const metaMensal = StorageService.obterNumero(KEYS.META_MENSAL, DEFAULTS.META_MENSAL);
+      const lucroMes = resumoMes.somaLucro;
+      const diasRodadosMes = resumoMes.diasTrabalhados;
+      const pctMes = metaMensal > 0 ? Math.min(100, Math.max(0, (lucroMes / metaMensal) * 100)) : 0;
+      const bateuMes = lucroMes >= metaMensal && metaMensal > 0;
+      const faltaMes = Math.max(0, metaMensal - lucroMes);
+
+      barra.className = `goal-fill weekly ${bateuMes ? 'hit' : ''}`;
+      barra.style.width = `${pctMes}%`;
+
+      txtInfo.innerHTML = bateuMes
+        ? `🏆 Meta de ${infoM.nomeMes} Batida! <strong>${FinanceEngine.moedaCurta(lucroMes)} / ${FinanceEngine.moedaCurta(metaMensal)}</strong>`
+        : `🗓️ ${infoM.nomeMes}: <strong>${FinanceEngine.moedaCurta(lucroMes)} / ${FinanceEngine.moedaCurta(metaMensal)}</strong> <span class="text-muted-sm">(${diasRodadosMes}d)</span>`;
+
+      if (bateuMes) {
+        txtRitmo.innerHTML = `🔥 <b>Meta mensal concluída!</b> Excedente livre: +${FinanceEngine.moeda(lucroMes - metaMensal)}.`;
+      } else if (diasRodadosMes > 0) {
+        const mediaDiaMes = lucroMes / diasRodadosMes;
+        const projecao26d = mediaDiaMes * 26;
+        txtRitmo.innerHTML = `📈 Ritmo: <b>${FinanceEngine.moedaCurta(mediaDiaMes)}/dia</b> • Projeção p/ 26 dias: <b class="text-green">${FinanceEngine.moedaCurta(projecao26d)}</b> (Faltam ${FinanceEngine.moedaCurta(faltaMes)}).`;
+      } else {
+        txtRitmo.innerHTML = `Meta de ${infoM.nomeMes}: ${FinanceEngine.moeda(metaMensal)} (~${FinanceEngine.moedaCurta(metaMensal / 26)}/dia em 26 dias).`;
+      }
       return;
     }
 
@@ -824,6 +969,26 @@ const UIController = {
     StorageService.salvarValor(KEYS.META_SEMANAL, val.toFixed(2));
     this.atualizarPainel();
     this.notificar('Meta semanal atualizada!');
+  },
+
+  async editarMetaMensal() {
+    const atual = StorageService.obterNumero(KEYS.META_MENSAL, DEFAULTS.META_MENSAL);
+    const val = await Sheet.pedirValor({
+      icone: '🗓️',
+      titulo: 'Meta líquida do mês',
+      subtitulo: 'Quanto você quer tirar livre no mês, já descontando todos os custos operacionais?',
+      valorInicial: String(atual),
+      prefixo: 'R$',
+      atalhos: [4000, 5000, 6000, 7500],
+      modoAtalho: 'definir',
+      textoOk: 'Salvar meta mensal',
+      variante: 'blue'
+    });
+    if (val === null || val <= 0) return;
+
+    StorageService.salvarValor(KEYS.META_MENSAL, val.toFixed(2));
+    this.atualizarPainel();
+    this.notificar('Meta mensal atualizada!');
   },
 
   renderizarInsightDiaSemana(turnos) {
@@ -919,8 +1084,62 @@ const UIController = {
     `;
   },
 
-  /* --- Gráfico de 7 Dias (escala com folga, linha de meta, legenda e rodapé fixo) --- */
-  montarDiasGrafico(turnos, infoSemanaSelecionada) {
+  /* --- Gráfico Adaptativo (7 dias, Semanas do Mês ou Últimos 6 Meses) --- */
+  montarDiasGrafico(turnos, infoSemanaSelecionada, infoMesSelecionado) {
+    // Modo MÊS: mostra as Semanas ISO que compõem o mês selecionado
+    if (this.periodoAtual === 'mes' && infoMesSelecionado) {
+      const ano = infoMesSelecionado.ano;
+      const mes = infoMesSelecionado.mes;
+      const ultimoDia = new Date(ano, mes + 1, 0).getDate();
+      const mapaSemanas = new Map();
+
+      for (let dia = 1; dia <= ultimoDia; dia++) {
+        const dt = new Date(ano, mes, dia, 12, 0, 0);
+        const infoSem = CalendarEngine.obterInfoSemanaISO(dt);
+        if (!mapaSemanas.has(infoSem.chaveSemana)) {
+          mapaSemanas.set(infoSem.chaveSemana, infoSem);
+        }
+      }
+
+      const semAtualChave = CalendarEngine.obterSemanaPorOffset(0).chaveSemana;
+      return Array.from(mapaSemanas.values()).map(sem => {
+        const turnosSem = turnos.filter(t => {
+          const dt = this.parseData(t);
+          return CalendarEngine.pertenceAoMes(dt, infoMesSelecionado) && CalendarEngine.pertenceASemana(dt, sem);
+        });
+        const resumo = FinanceEngine.resumirLista(turnosSem);
+        return {
+          rotulo: `S${sem.numStr}`,
+          dataCompleta: `Semana ${sem.numStr} (${sem.intervaloCurto})`,
+          valor: resumo.somaLucro,
+          km: resumo.somaKm,
+          horas: resumo.somaHoras,
+          qtdTurnos: turnosSem.length,
+          ehHoje: sem.chaveSemana === semAtualChave
+        };
+      });
+    }
+
+    // Modo TOTAL: mostra a evolução dos últimos 6 meses
+    if (this.periodoAtual === 'tudo') {
+      return Array.from({ length: 6 }, (_, i) => {
+        const offset = -(5 - i);
+        const infoM = CalendarEngine.obterMesPorOffset(offset);
+        const turnosM = turnos.filter(t => CalendarEngine.pertenceAoMes(this.parseData(t), infoM));
+        const resumo = FinanceEngine.resumirLista(turnosM);
+        return {
+          rotulo: CalendarEngine.MESES_CURTOS[infoM.mes].toUpperCase(),
+          dataCompleta: infoM.rotuloMes,
+          valor: resumo.somaLucro,
+          km: resumo.somaKm,
+          horas: resumo.somaHoras,
+          qtdTurnos: turnosM.length,
+          ehHoje: offset === 0
+        };
+      });
+    }
+
+    // Modo HOJE / SEMANA: mostra 7 dias
     const hojeStr = new Date().toLocaleDateString('pt-BR');
     const nomesDias = CalendarEngine.DIAS_CURTOS;
 
@@ -952,13 +1171,20 @@ const UIController = {
     });
   },
 
-  renderizarGrafico7Dias(turnos, meta, infoSemanaSelecionada) {
+  renderizarGrafico7Dias(turnos, metaDiaria, infoSemanaSelecionada, infoMesSelecionado) {
     const container = document.getElementById('grafico7Dias');
     if (!container) return;
 
-    const dias = this.montarDiasGrafico(turnos, infoSemanaSelecionada);
+    const meta = this.periodoAtual === 'mes'
+      ? StorageService.obterNumero(KEYS.META_SEMANAL, DEFAULTS.META_SEMANAL)
+      : (this.periodoAtual === 'tudo'
+          ? StorageService.obterNumero(KEYS.META_MENSAL, DEFAULTS.META_MENSAL)
+          : metaDiaria);
+
+    const dias = this.montarDiasGrafico(turnos, infoSemanaSelecionada, infoMesSelecionado);
     this.ultimosDiasGrafico = dias;
     this.metaGraficoAtual = meta;
+    container.style.gridTemplateColumns = `repeat(${dias.length}, 1fr)`;
 
     if (this.indiceBarraSelecionada !== null && !dias[this.indiceBarraSelecionada]) {
       this.indiceBarraSelecionada = null;
@@ -966,9 +1192,15 @@ const UIController = {
 
     const titulo = document.getElementById('tituloGrafico');
     if (titulo) {
-      titulo.textContent = (this.periodoAtual === '7dias' && infoSemanaSelecionada)
-        ? `Semana ${infoSemanaSelecionada.numStr} • Seg–Dom`
-        : 'Últimos 7 dias';
+      if (this.periodoAtual === 'mes' && infoMesSelecionado) {
+        titulo.textContent = `Semanas • ${infoMesSelecionado.nomeMes}`;
+      } else if (this.periodoAtual === 'tudo') {
+        titulo.textContent = 'Últimos 6 meses';
+      } else if (this.periodoAtual === '7dias' && infoSemanaSelecionada) {
+        titulo.textContent = `Semana ${infoSemanaSelecionada.numStr} • Seg–Dom`;
+      } else {
+        titulo.textContent = 'Últimos 7 dias';
+      }
     }
     const legendaMeta = document.getElementById('legendaMetaValor');
     if (legendaMeta) {
@@ -1047,18 +1279,24 @@ const UIController = {
       return;
     }
 
-    // Modo resumo (padrão): total dos 7 dias + dias na meta
+    // Modo resumo (padrão): total das barras ativas + quantas bateram a meta
     rodape.classList.remove('is-detail');
     const diasRodados = dias.filter(d => d.qtdTurnos > 0);
+    const nomeUnidade = this.periodoAtual === 'mes'
+      ? (diasRodados.length === 1 ? 'semana' : 'semanas')
+      : (this.periodoAtual === 'tudo'
+          ? (diasRodados.length === 1 ? 'mês' : 'meses')
+          : (diasRodados.length === 1 ? 'dia' : 'dias'));
+
     if (diasRodados.length === 0) {
-      rodape.innerHTML = `<span>Nenhum turno neste período</span><span>Toque numa barra p/ ver o dia</span>`;
+      rodape.innerHTML = `<span>Nenhum turno neste período</span><span>Toque numa barra p/ ver detalhes</span>`;
       return;
     }
 
     const total = diasRodados.reduce((acc, d) => acc + d.valor, 0);
     const naMeta = meta > 0 ? diasRodados.filter(d => d.valor >= meta).length : 0;
     rodape.innerHTML = `
-      <span>Total: <b>${FinanceEngine.moeda(total)}</b> em ${diasRodados.length} dia${diasRodados.length === 1 ? '' : 's'}</span>
+      <span>Total: <b>${FinanceEngine.moeda(total)}</b> em ${diasRodados.length} ${nomeUnidade}</span>
       <span>🎯 <b>${naMeta}/${diasRodados.length}</b> na meta</span>
     `;
   },
@@ -1087,37 +1325,63 @@ const UIController = {
   renderizarFerramentasPista(turnos) {
     const kmProxOleo = StorageService.obterNumero(KEYS.KM_PROX_OLEO, 0);
     const custoFixoMes = StorageService.obterNumero(KEYS.CUSTO_FIXO_MES, 0);
+    const baixaManut = StorageService.obterNumero(KEYS.BAIXA_MANUT, 0);
     const ultimoComKm = turnos.find(t => t.kmFinal && t.kmFinal > 0);
     const kmAtual = ultimoComKm ? Number(ultimoComKm.kmFinal) : 0;
 
+    const totalProvisao = turnos.reduce((acc, t) => acc + (parseFloat(t.provisaoManut) || 0), 0);
+    const saldoCaixaManut = Math.max(0, totalProvisao - baixaManut);
+
     const badge = document.getElementById('badgeOleoStatus');
     const info = document.getElementById('infoManutencaoFixo');
+    const kpisBox = document.getElementById('kpisManutencaoOleo');
     if (!badge || !info) return;
 
     const linhasInfo = [];
+    let txtOleoKpi = 'Definir KM';
+    let corOleoKpi = 'text-yellow';
 
     if (kmProxOleo > 0 && kmAtual > 0) {
       const faltaKm = kmProxOleo - kmAtual;
       if (faltaKm <= 0) {
         badge.className = 'status-badge status-bad';
         badge.textContent = '🛢️ Trocar Óleo!';
+        txtOleoKpi = `Vencido (${Math.abs(faltaKm)} km)`;
+        corOleoKpi = 'text-red';
         linhasInfo.push(`⚠️ <b class="text-red">Troca de óleo vencida há ${Math.abs(faltaKm)} km!</b> (Meta: ${kmProxOleo} km)`);
       } else if (faltaKm <= 600) {
         badge.className = 'status-badge status-warn';
         badge.textContent = `🛢️ Óleo: ${faltaKm} km`;
+        txtOleoKpi = `Faltam ${faltaKm} km`;
+        corOleoKpi = 'text-yellow';
         linhasInfo.push(`🔔 Faltam <b class="text-yellow">${faltaKm} km</b> para a troca de óleo (${kmProxOleo} km).`);
       } else {
         badge.className = 'status-badge status-good';
         badge.textContent = `🛢️ Óleo: ${faltaKm} km`;
-        linhasInfo.push(`🛢️ Próxima troca de óleo em <b>${kmProxOleo} km</b> (faltam ${faltaKm} km).`);
+        txtOleoKpi = `Faltam ${faltaKm} km`;
+        corOleoKpi = 'text-green';
       }
     } else if (kmProxOleo > 0) {
       badge.className = 'status-badge status-good';
       badge.textContent = `🛢️ ${kmProxOleo} km`;
-      linhasInfo.push(`🛢️ Troca de óleo programada para <b>${kmProxOleo} km</b>.`);
+      txtOleoKpi = `Em ${kmProxOleo} km`;
+      corOleoKpi = '';
     } else {
       badge.className = 'status-badge status-warn';
       badge.textContent = '🛢️ Definir Óleo';
+    }
+
+    if (kpisBox) {
+      kpisBox.innerHTML = `
+        <div class="kpi-tile clickable" onclick="UIController.gerenciarCaixaManutencao()" title="Toque para registrar gasto com oficina/peças">
+          <span>🛠️ Caixa Manutenção</span>
+          <strong class="text-green">${FinanceEngine.moeda(saldoCaixaManut)}</strong>
+        </div>
+        <div class="kpi-tile clickable" onclick="UIController.configurarTrocaOleo()" title="Toque para ajustar KM da próxima troca de óleo">
+          <span>🛢️ Próxima Troca</span>
+          <strong class="${corOleoKpi}">${txtOleoKpi}</strong>
+        </div>
+      `;
     }
 
     if (custoFixoMes > 0) {
@@ -1129,7 +1393,32 @@ const UIController = {
       }
     }
 
-    info.innerHTML = linhasInfo.join('<br>') || 'Toque nos botões acima para simular uma corrida, programar troca de óleo ou calcular seu custo fixo diário.';
+    info.innerHTML = linhasInfo.join('<br>') || 'Toque em <b>Caixa Manutenção</b> quando usar a reserva na oficina.';
+  },
+
+  async gerenciarCaixaManutencao() {
+    const turnos = StorageService.obterTurnos();
+    const totalProvisao = turnos.reduce((acc, t) => acc + (parseFloat(t.provisaoManut) || 0), 0);
+    const baixaAtual = StorageService.obterNumero(KEYS.BAIXA_MANUT, 0);
+    const saldo = Math.max(0, totalProvisao - baixaAtual);
+
+    const gastoOficina = await Sheet.pedirValor({
+      icone: '🛠️',
+      titulo: 'Caixa de Manutenção',
+      subtitulo: `Você já acumulou <b>${FinanceEngine.moeda(saldo)}</b> livres na reserva por KM. Digite quanto gastou na oficina/peças para abater do caixa (ou 0 p/ cancelar):`,
+      placeholder: '0,00',
+      prefixo: 'R$',
+      atalhos: [50, 100, 200, 350],
+      modoAtalho: 'somar',
+      permitirVazio: true,
+      textoOk: 'Dar baixa no caixa',
+      variante: 'green'
+    });
+    if (gastoOficina === null || gastoOficina <= 0) return;
+
+    StorageService.salvarValor(KEYS.BAIXA_MANUT, (baixaAtual + gastoOficina).toFixed(2));
+    this.atualizarPainel();
+    this.notificar(`${FinanceEngine.moeda(gastoOficina)} abatidos do Caixa de Manutenção!`);
   },
 
   simularCorrida() {
@@ -1375,6 +1664,30 @@ const UIController = {
           ? `${item.corridas} (${item.ticketMedio ? `${FinanceEngine.moeda(item.ticketMedio)}/corr.` : ''})`
           : 'Não informado';
 
+        const uberNum = Number(item.ganhoUber || 0);
+        const pop99Num = Number(item.ganho99 || 0);
+        const pixNum = Number(item.ganhoOutros || 0);
+        const temApps = (uberNum + pop99Num + pixNum) > 0;
+        const linhaAppsHTML = temApps
+          ? `<div class="act-detail-row">
+               <span>📱 Por App</span>
+               <span>${[
+                 uberNum > 0 ? `Uber ${FinanceEngine.moedaCurta(uberNum)}` : '',
+                 pop99Num > 0 ? `99 ${FinanceEngine.moedaCurta(pop99Num)}` : '',
+                 pixNum > 0 ? `Pix ${FinanceEngine.moedaCurta(pixNum)}` : ''
+               ].filter(Boolean).join(' • ')}</span>
+             </div>`
+          : '';
+
+        const listaTags = Array.isArray(item.tags) ? item.tags : [];
+        const temTagsOuObs = listaTags.length > 0 || (item.obs && item.obs.trim() !== '');
+        const tagsHTML = temTagsOuObs
+          ? `<div class="act-tags-row">
+               ${listaTags.map(tg => `<span class="act-tag-badge">${tg}</span>`).join('')}
+               ${item.obs ? `<span class="act-tag-badge">📝 ${item.obs}</span>` : ''}
+             </div>`
+          : '';
+
         return `
           <div id="card-turno-${item.id}" class="activity-item" onclick="UIController.toggleDetalhesTurno('${item.id}')">
             <div class="act-header">
@@ -1401,6 +1714,7 @@ const UIController = {
                 <strong class="text-green">${FinanceEngine.moeda(item.liquidoKm)}</strong>
               </div>
             </div>
+            ${tagsHTML}
 
             <div class="act-details-panel" onclick="event.stopPropagation()">
               <div class="act-detail-section-title">🛣️ Operação e Eficiência (${item.data})</div>
@@ -1417,6 +1731,7 @@ const UIController = {
                   <span>Viagens / Ticket médio</span>
                   <span>${textoCorridas}</span>
                 </div>
+                ${linhaAppsHTML}
                 <div class="act-detail-row">
                   <span>Ganho Bruto vs. Líquido / KM</span>
                   <span>${FinanceEngine.moeda(item.brutoKm || 0)}/km → <b class="text-green">${FinanceEngine.moeda(item.liquidoKm)}/km</b></span>
@@ -1537,11 +1852,17 @@ const UIController = {
     document.getElementById('kmFinal').value = reg.kmFinal || '';
     document.getElementById('kmTotalInput').value = reg.kmTotal || '';
     document.getElementById('corridas').value = reg.corridas || '';
+    document.getElementById('ganhoUber').value = reg.ganhoUber || '';
+    document.getElementById('ganho99').value = reg.ganho99 || '';
+    document.getElementById('ganhoOutros').value = reg.ganhoOutros || '';
     document.getElementById('faturamento').value = reg.faturamento || '';
     document.getElementById('combustivel').value = reg.combustivel || '';
     document.getElementById('alimentacao').value = reg.alimentacao || '';
     document.getElementById('diariaCarro').value = reg.diariaCarro || '';
     document.getElementById('outrosGastos').value = reg.outrosGastos || '';
+    if (document.getElementById('obsTurno')) document.getElementById('obsTurno').value = reg.obs || '';
+    this.tagsSelecionadas = Array.isArray(reg.tags) ? [...reg.tags] : [];
+    this.sincronizarPillsTags();
 
     this.navegarAba('fechar');
     this.notificar(`Editando turno de ${reg.data}. Altere e toque em Salvar!`);
@@ -1552,6 +1873,8 @@ const UIController = {
     const banner = document.getElementById('bannerModoEdicao');
     if (banner) banner.style.display = 'none';
     Rascunho.limpar();
+    this.tagsSelecionadas = [];
+    this.sincronizarPillsTags();
     document.getElementById('dataTurno').value = this.hojeISO();
     if (mostrarAviso) this.notificar('Edição cancelada.');
   },

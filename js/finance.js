@@ -81,7 +81,8 @@ const FinanceEngine = {
   },
 
   resumirLista(turnos) {
-    let somaLucro = 0, somaBruto = 0, somaCustos = 0, somaKm = 0, somaHoras = 0;
+    let somaLucro = 0, somaBruto = 0, somaCustos = 0, somaKm = 0, somaHoras = 0, somaManut = 0;
+    let somaUber = 0, soma99 = 0, somaOutrosApps = 0;
     const diasUnicos = new Set();
 
     turnos.forEach(item => {
@@ -93,6 +94,10 @@ const FinanceEngine = {
       somaCustos += cus;
       somaKm += parseFloat(item.kmTotal) || 0;
       somaHoras += parseFloat(item.horas) || 0;
+      somaManut += parseFloat(item.provisaoManut) || 0;
+      somaUber += parseFloat(item.ganhoUber) || 0;
+      soma99 += parseFloat(item.ganho99) || 0;
+      somaOutrosApps += parseFloat(item.ganhoOutros) || 0;
       diasUnicos.add(item.dataISO || item.data);
     });
 
@@ -105,6 +110,10 @@ const FinanceEngine = {
       somaCustos,
       somaKm,
       somaHoras,
+      somaManut,
+      somaUber,
+      soma99,
+      somaOutrosApps,
       mediaKm,
       mediaHora,
       diasTrabalhados: diasUnicos.size

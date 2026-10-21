@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
-  <link rel="stylesheet" href="./css/styles.css?v=13">
+  <link rel="stylesheet" href="./css/styles.css?v=14">
   <title>Meu Turno — Driver</title>
 </head>
 <body>
@@ -64,6 +64,9 @@
           <span>Custos: <b id="kpiCustos">R$ 0,00</b></span>
         </div>
 
+        <!-- Divisão por Plataforma (Uber / 99 / Pix) quando informada -->
+        <div id="barraAppsPeriodo" class="app-split-box hidden"></div>
+
         <!-- Comparativo Automático com a Semana / Mês Anterior -->
         <div id="badgeComparativoPeriodo" class="period-comparison-badge"></div>
       </div>
@@ -101,14 +104,15 @@
       <div id="insightDiaSemana" class="weekday-insight"></div>
     </div>
 
-    <!-- Card Unificado de Metas (Alternância Limpa entre Meta do Dia e Meta da Semana) -->
+    <!-- Card Unificado de Metas (Alternância Limpa entre Hoje, Semana e Mês) -->
     <div class="uber-card">
       <div class="card-header-row compact">
         <div class="goal-header-tabs">
-          <button id="btnAbaMetaDia" type="button" class="goal-tab-btn active" onclick="UIController.alternarAbaMeta('dia')">🎯 Meta Hoje</button>
-          <button id="btnAbaMetaSemana" type="button" class="goal-tab-btn" onclick="UIController.alternarAbaMeta('semana')">📅 Meta Semana</button>
+          <button id="btnAbaMetaDia" type="button" class="goal-tab-btn active" onclick="UIController.alternarAbaMeta('dia')">🎯 Hoje</button>
+          <button id="btnAbaMetaSemana" type="button" class="goal-tab-btn" onclick="UIController.alternarAbaMeta('semana')">📅 Semana</button>
+          <button id="btnAbaMetaMes" type="button" class="goal-tab-btn" onclick="UIController.alternarAbaMeta('mes')">🗓️ Mês</button>
         </div>
-        <button id="btnEditarMetaUnificada" type="button" class="chip-btn" onclick="UIController.editarMetaAtiva()">Editar meta</button>
+        <button id="btnEditarMetaUnificada" type="button" class="chip-btn" onclick="UIController.editarMetaAtiva()">Editar</button>
       </div>
 
       <div class="goal-row">
@@ -126,6 +130,9 @@
         <h2 class="card-title">⚡ Ferramentas de Pista</h2>
         <span id="badgeOleoStatus" class="status-badge status-good" onclick="UIController.configurarTrocaOleo()">🔧 Óleo OK</span>
       </div>
+
+      <!-- KPIs Padronizados: Cofre de Reserva de Manutenção e Próxima Troca de Óleo -->
+      <div id="kpisManutencaoOleo" class="kpi-row-2 mb-12"></div>
 
       <div class="grid-3">
         <button type="button" class="quick-exp-btn" onclick="UIController.togglePainel('painelSimuladorCorrida')">
@@ -302,6 +309,21 @@
         <input type="number" id="custoKm" step="0.01" inputmode="decimal" value="0.15">
       </div>
 
+      <div>
+        <label>
+          <span>Tags e Nota do Dia</span>
+          <span class="label-hint">Opcional</span>
+        </label>
+        <div id="listaTagsTurno" class="shift-tags-row">
+          <button type="button" class="tag-pill" data-tag="🌧️ Chuva" onclick="UIController.alternarTagTurno('🌧️ Chuva')">🌧️ Chuva</button>
+          <button type="button" class="tag-pill" data-tag="⚡ Dinâmico" onclick="UIController.alternarTagTurno('⚡ Dinâmico')">⚡ Dinâmico</button>
+          <button type="button" class="tag-pill" data-tag="🎉 Evento" onclick="UIController.alternarTagTurno('🎉 Evento')">🎉 Evento</button>
+          <button type="button" class="tag-pill" data-tag="🔧 Oficina" onclick="UIController.alternarTagTurno('🔧 Oficina')">🔧 Oficina</button>
+          <button type="button" class="tag-pill" data-tag="🛣️ Viagem" onclick="UIController.alternarTagTurno('🛣️ Viagem')">🛣️ Viagem</button>
+        </div>
+        <input type="text" id="obsTurno" maxlength="60" placeholder="Ex: Aeroporto movimentado / Chuva à tarde">
+      </div>
+
       <button class="btn-uber-green" onclick="UIController.salvarFechamento()">
         Concluir e Salvar Fechamento
       </button>
@@ -406,10 +428,10 @@
 <div id="toast" class="uber-toast"></div>
 
 <!-- MÓDULOS JAVASCRIPT DO APP -->
-<script src="./js/storage.js?v=13"></script>
-<script src="./js/calendar.js?v=13"></script>
-<script src="./js/finance.js?v=13"></script>
-<script src="./js/sheet.js?v=13"></script>
-<script src="./js/ui.js?v=13"></script>
+<script src="./js/storage.js?v=14"></script>
+<script src="./js/calendar.js?v=14"></script>
+<script src="./js/finance.js?v=14"></script>
+<script src="./js/sheet.js?v=14"></script>
+<script src="./js/ui.js?v=14"></script>
 </body>
 </html>
