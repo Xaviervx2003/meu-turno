@@ -74,4 +74,25 @@ Para **nunca ficar bagunçado** ou poluído visualmente, a interface segue rigor
 3. **Sanitização e Segurança de Dados:**
    - Toda entrada numérica passa por um helper `lerNumero(id)` que converte vírgula em ponto e garante retorno `0` em caso de `NaN` ou valor negativo inválido.
 4. **Compatibilidade Retroativa:**
-   - A chave `turnos_app` no `localStorage` mantém todos os campos originais exigidos pela especificação (`id`, `data`, `kmTotal`, `faturamento`, `lucroLiquido`, `liquidoKm`, `ticketMedio`).
+   - A chave `turnos_app` no `localStorage` mantém todos os campos originais exigidos pela especificação (`id`, `data`, `kmTotal`, `faturamento`, `lucroLiquido`, `liquidoKm`, `ticketMedio`), acrescidos de `ganhoUber`, `ganho99`, `ganhoOutros`, `tags` e `obs`.
+
+---
+
+## 4. Arquitetura Modular Atual & Repositório (`meu-turno-v14`)
+
+- **Diretório Local:** `C:\Users\direcao\.gemini\antigravity\scratch\meu-turno`
+- **Repositório GitHub Pages:** `https://github.com/Xaviervx2003/meu-turno.git` (branch `main` → `https://xaviervx2003.github.io/meu-turno/`)
+- **Estrutura de Arquivos:**
+  - `index.html`: Estrutura semântica enxuta das 3 abas (`#tab-painel`, `#tab-fechar`, `#tab-historico`) + Bottom Sheet (`#sheet`).
+  - `css/styles.css`: Design System **Uber Base UI Dark OLED**, blocos padronizados `.kpi-tile` / `.kpi-row` / `.kpi-row-2`, gráfico interativo e responsividade garantida para telas de `360px`.
+  - `js/storage.js`: `KEYS`, `DEFAULTS`, `StorageService`, `Cofre` (espelhamento automático em IndexedDB + pontos de restauração), `Rascunho` e `StorageGuard`.
+  - `js/calendar.js`: `CalendarEngine` (cálculo de Semanas do Ano ISO `01–52/53` no ciclo Segunda a Domingo, navegação por offset e agrupamento semanal/mensal).
+  - `js/finance.js`: `FinanceEngine` (fórmulas financeiras, avaliação de rentabilidade, `resumirLista`, formatação `moeda`, `moedaCurta`, `numeroBR`).
+  - `js/sheet.js`: `Sheet` (Bottom Sheet nativo estilo Uber substituindo `prompt`/`confirm`).
+  - `js/ui.js`: `UIController` (Turno ao Vivo com Ganhos Parciais e Pausa Almoço, Gráfico Adaptativo por Dia/Semana/Mês, Raio-X por App Uber/99/Pix, Meta Diária/Semanal/Mensal com projeção, Caixa de Manutenção acumulado, Simulador de Corrida e Histórico com Backup JSON/CSV).
+  - `sw.js`: Service Worker **Network-First com fallback Offline**.
+
+### 4.1. Próxima Funcionalidade Planejada: Leitor Automático de Notas Fiscais (NFC-e SEFAZ-AM)
+- Leitura via QR Code (câmera) ou link da **SEFAZ-AM** (`https://sistemas.sefaz.am.gov.br/nfceweb/consultarNFCe.do?acao=submitConsultaNFCeRedirect&txtChaveAcessoNFe=...&hash=...`).
+- O portal SEFAZ-AM utiliza sessão (`JSESSIONID`) no redirect inicial e renderiza os dados do cupom em `https://sistemas.sefaz.am.gov.br/nfceweb/jsp/consultanfce/resultadoConsultaNFCeResponsiva.jsp` (estabelecimento, CNPJ, endereço, itens com código/qtd/unidade/valor unitário/total, valor total pago, forma de pagamento e data/hora exata de emissão).
+- Ao ler a nota, o sistema preenche automaticamente a data da compra, o valor e categoriza os itens (ex: combustível/litros/preço por litro ou alimentação/compras).
