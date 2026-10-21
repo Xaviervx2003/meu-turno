@@ -72,10 +72,27 @@ body {
   background: var(--uber-black);
   color: var(--uber-white);
   margin: 0;
-  padding: 0 0 88px 0;
+  padding: 0 0 calc(88px + env(safe-area-inset-bottom)) 0;
   display: flex;
   justify-content: center;
   min-height: 100vh;
+}
+
+body.app-em-background .app-shell {
+  filter: blur(16px);
+  transition: filter 0.12s ease;
+}
+
+body.privacy-mode #faturamento:not(:focus),
+body.privacy-mode #ganhoUber:not(:focus),
+body.privacy-mode #ganho99:not(:focus),
+body.privacy-mode #ganhoOutros:not(:focus),
+body.privacy-mode #combustivel:not(:focus),
+body.privacy-mode #alimentacao:not(:focus),
+body.privacy-mode #diariaCarro:not(:focus),
+body.privacy-mode #outrosGastos:not(:focus),
+body.privacy-mode #simValor:not(:focus) {
+  filter: blur(6px);
 }
 
 .app-shell {
@@ -1425,7 +1442,7 @@ button.status-badge {
   max-width: 480px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  padding: 6px 8px 10px;
+  padding: 6px 8px calc(10px + env(safe-area-inset-bottom));
 }
 .nav-item {
   background: none;
@@ -1604,7 +1621,7 @@ body.sheet-aberto { overflow: hidden; }
 /* Toast */
 .uber-toast {
   position: fixed;
-  bottom: 78px;
+  bottom: calc(78px + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
   background: var(--uber-white);

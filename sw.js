@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meu-turno-v15';
+const CACHE_NAME = 'meu-turno-v16';
 const ASSETS = [
   './',
   './index.html',
@@ -34,6 +34,8 @@ self.addEventListener('activate', (event) => {
 // Quando online, traz sempre o layout mais novo imediatamente; sem sinal, abre 100% offline.
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  if (!event.request.url.startsWith(self.location.origin)) return;
+
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {

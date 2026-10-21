@@ -78,7 +78,7 @@ Para **nunca ficar bagunçado** ou poluído visualmente, a interface segue rigor
 
 ---
 
-## 4. Arquitetura Modular Atual & Repositório (`meu-turno-v15`)
+## 4. Arquitetura Modular Atual & Repositório (`meu-turno-v16`)
 
 - **Diretório Local:** `C:\Users\direcao\.gemini\antigravity\scratch\meu-turno`
 - **Repositório GitHub Pages:** `https://github.com/Xaviervx2003/meu-turno.git` (branch `main` → `https://xaviervx2003.github.io/meu-turno/`)
@@ -99,30 +99,33 @@ Para **nunca ficar bagunçado** ou poluído visualmente, a interface segue rigor
 
 ---
 
-## 5. Resumo de Segurança e Acessibilidade Veicular (`meu-turno-v15`)
+## 5. Resumo de Segurança e Acessibilidade Veicular (`meu-turno-v16`)
 
 ### 5.1. Melhorias de Segurança e Proteção de Dados
-1. **Modo Privacidade na Pista (`👁️` / `🙈` Ocultar Valores):**
-   - Toque rápido na pílula central da Topbar (`#btnPillPrivacidade`) oculta ou exibe instantaneamente todos os valores monetários da tela (`R$ ••••`), protegendo a privacidade do motorista quando há passageiros no carro ou em postos/oficinas.
+1. **Modo Privacidade na Pista (`👁️` / `🙈`) + Escudo de Multitarefa (App Switcher):**
+   - Toque rápido na pílula central da Topbar (`#btnPillPrivacidade`) oculta ou exibe instantaneamente todos os valores monetários da tela (`R$ ••••`) e aplica desfoque (`filter: blur`) nos inputs financeiros não focados (`body.privacy-mode`).
+   - Ao minimizar o app para abrir o Uber/Waze (`visibilitychange` / `document.hidden`), `body.app-em-background` desfoca o app automaticamente para proteger os valores na captura de tela do App Switcher (estilo Apple Wallet / Nubank).
    - Os resumos copiados para o WhatsApp e os modais de lançamento continuam exibindo o valor real (`FinanceEngine.moeda(valor, true)`).
-2. **Blindagem contra XSS e Sanitização de Schema (`StorageService`):**
+2. **Blindagem contra XSS, CSV Injection e Sanitização de Schema (`StorageService`):**
    - `StorageService.escaparHTML()` protege todas as strings dinâmicas (`obs`, `tags`, `motivo` de restauração, datas e IDs) antes da renderização no DOM.
-   - `StorageService.sanitizarTurno()` valida tipos numéricos, remove `NaN`/`Infinity`, limita tamanho de strings e higieniza qualquer arquivo `.json` importado.
-   - Política `Content-Security-Policy` (CSP) e `Referrer-Policy: no-referrer` aplicadas no `<head>` de `index.html`.
+   - `StorageService.sanitizarTurno()` valida tipos numéricos, remove `NaN`/`Infinity`, limita tamanho de strings e higieniza qualquer arquivo `.json` importado (com limite de 5 MB e reordenação cronológica automática).
+   - `exportarCSV()` sanitiza células contra *CSV Formula Injection* (`=`, `+`, `-`, `@`) e inclui todas as colunas novas (`Ganho_Uber`, `Ganho_99`, `Ganho_Pix_Outros`, `Tags` e `Observacao`).
+   - Política `Content-Security-Policy` (CSP), `Referrer-Policy: no-referrer` e filtro *same-origin* no `sw.js`.
 3. **Backup JSON v4 Completo + Cofre Duplo Integral (`IndexedDB`):**
-   - O pacote de exportação/importação `.json` e o espelhamento automático no `IndexedDB` (`Cofre.espelharConfigs()`) agora salvam e restauram 100% das configurações: `metaDiaria`, `metaSemanal`, `metaMensal`, `custoKm`, `consumoKmL`, `precoLitro`, `kmProxOleo`, `custoFixoMes` e `baixaManut`.
-4. **Trava de Consistência do Odômetro (`KM Final < KM Inicial`):**
-   - Destaque visual imediato (`.input-error`) e bloqueio no fechamento caso o motorista digite um `KM Final` menor que o `KM Inicial` por engano.
+   - O pacote de exportação/importação `.json` e o espelhamento automático no `IndexedDB` (`Cofre.espelharConfigs()`, `Cofre.verificarAutoRecuperacao()`) salvam e restauram 100% dos turnos, do `TURNO_ATIVO` em andamento na rua e de todas as configurações (`metaDiaria`, `metaSemanal`, `metaMensal`, `custoKm`, `consumoKmL`, `precoLitro`, `kmProxOleo`, `custoFixoMes` e `baixaManut`).
+4. **Trava de Consistência do Odômetro (`KM Final < KM Inicial`) & Lock Anti-Duplo-Toque:**
+   - Destaque visual imediato (`.input-error`) e bloqueio no fechamento caso o motorista digite um `KM Final` menor que o `KM Inicial`, além de trava de concorrência (`_salvandoFechamento`) contra duplo toque em `salvarFechamento()`.
 
 ### 5.2. Melhorias de Acessibilidade (WCAG AA) e Ergonomia Veicular
-5. **Zoom de Acessibilidade Desbloqueado + `touch-action: manipulation`:**
+5. **Zoom de Acessibilidade Desbloqueado + `touch-action: manipulation` + `safe-area-inset-bottom`:**
    - Removido o bloqueio `user-scalable=no` / `maximum-scale=1.0` do `viewport`, permitindo pinça/zoom para motoristas com baixa visão, enquanto `touch-action: manipulation` evita zoom acidental ao tocar rápido nos botões.
+   - Respeito integral à barra de gestos inferior (`env(safe-area-inset-bottom)`) no `.bottom-nav-inner`, `body`, `.sheet` e `.uber-toast`.
 6. **Vínculo Semântico `<label for="...">` em 100% dos Formulários:**
    - Todos os 19 campos de entrada possuem `<label for="...">` explícito e o filtro de histórico possui `aria-label`, permitindo foco ao tocar no rótulo e leitura completa via TalkBack (Android) e VoiceOver (iOS).
 7. **Alto Contraste sob Sol Forte (`4.5:1`), `:focus-visible` e `prefers-reduced-motion`:**
    - Placeholders ajustados de `#595959` (`2.35:1`) para `#8A8A8A` (`4.5:1` WCAG AA sobre `#1F1F1F`).
    - Anel de foco `:focus-visible` em azul Uber (`--uber-blue`) para navegação por teclado/botões físicos e suporte a `@media (prefers-reduced-motion: reduce)`.
 8. **Semântica ARIA Completa e Focus Trap no Bottom Sheet (`Sheet`):**
-   - KPIs clicáveis, pílula do topo e alerta de óleo convertidos em `<button type="button">` nativos; cards de histórico com `role="button"`, `tabindex="0"`, `aria-expanded` e suporte às teclas `Enter`/`Espaço`.
+   - KPIs clicáveis, pílula do topo e alerta de óleo convertidos em `<button type="button">` nativos; gavetas recolhíveis sincronizam `aria-expanded` / `aria-controls`; cards de histórico com `role="button"`, `tabindex="0"`, `aria-expanded` e suporte às teclas `Enter`/`Espaço`.
    - `#toast` e status do turno configurados com `role="status" aria-live="polite"`.
    - Modal `Sheet` prende o foco (`Tab` / `Shift+Tab`) enquanto aberto e devolve o foco ao botão de origem ao fechar.

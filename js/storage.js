@@ -246,6 +246,19 @@ const Cofre = {
         await this.espelharConfigs();
       }
 
+      const ativoLocal = StorageService.obterTurnoAtivo();
+      if (!ativoLocal) {
+        const espelhoAtivo = await new Promise((resolve) => {
+          const tx = db.transaction('espelho', 'readonly');
+          const req = tx.objectStore('espelho').get(KEYS.TURNO_ATIVO);
+          req.onsuccess = () => resolve(req.result?.valor || null);
+          req.onerror = () => resolve(null);
+        });
+        if (espelhoAtivo && typeof espelhoAtivo === 'object' && espelhoAtivo.inicioMs) {
+          localStorage.setItem(KEYS.TURNO_ATIVO, JSON.stringify(espelhoAtivo));
+        }
+      }
+
       if (turnosLocal.length === 0 && Array.isArray(espelhoTurnos) && espelhoTurnos.length > 0) {
         localStorage.setItem(KEYS.TURNOS, JSON.stringify(espelhoTurnos));
         return espelhoTurnos.length;

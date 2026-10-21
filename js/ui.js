@@ -63,6 +63,7 @@ const UIController = {
     const pill = document.getElementById('btnPillPrivacidade');
     if (icone) icone.textContent = FinanceEngine.ocultarValores ? '🙈' : '👁️';
     if (pill) pill.setAttribute('aria-pressed', String(FinanceEngine.ocultarValores));
+    document.body.classList.toggle('privacy-mode', FinanceEngine.ocultarValores);
   },
 
   atualizarTudo() {
@@ -110,7 +111,12 @@ const UIController = {
   },
 
   togglePainel(id) {
-    document.getElementById(id).classList.toggle('open');
+    const painel = document.getElementById(id);
+    if (!painel) return;
+    const aberto = painel.classList.toggle('open');
+    document.querySelectorAll(`[aria-controls="${id}"]`).forEach(btn => {
+      btn.setAttribute('aria-expanded', String(aberto));
+    });
   },
 
   formatarDuracaoMs(ms) {
@@ -454,124 +460,130 @@ const UIController = {
   },
 
   async salvarFechamento() {
-    const obsTexto = (document.getElementById('obsTurno')?.value || '').trim().slice(0, 60);
-    const entrada = {
-      dataISO: document.getElementById('dataTurno').value,
-      horas: this.lerNumero('horasTrabalhadas'),
-      kmIni: this.lerNumero('kmInicial'),
-      kmFim: this.lerNumero('kmFinal'),
-      kmDireto: this.lerNumero('kmTotalInput'),
-      corridas: Math.round(this.lerNumero('corridas')),
-      ganhoUber: this.lerNumero('ganhoUber'),
-      ganho99: this.lerNumero('ganho99'),
-      ganhoOutros: this.lerNumero('ganhoOutros'),
-      faturamento: this.lerNumero('faturamento'),
-      combustivel: this.lerNumero('combustivel'),
-      alimentacao: this.lerNumero('alimentacao'),
-      diariaCarro: this.lerNumero('diariaCarro'),
-      outrosGastos: this.lerNumero('outrosGastos'),
-      custoKm: this.lerNumero('custoKm')
-    };
+    if (this._salvandoFechamento) return;
+    this._salvandoFechamento = true;
+    try {
+      const obsTexto = (document.getElementById('obsTurno')?.value || '').trim().slice(0, 60);
+      const entrada = {
+        dataISO: document.getElementById('dataTurno').value,
+        horas: this.lerNumero('horasTrabalhadas'),
+        kmIni: this.lerNumero('kmInicial'),
+        kmFim: this.lerNumero('kmFinal'),
+        kmDireto: this.lerNumero('kmTotalInput'),
+        corridas: Math.round(this.lerNumero('corridas')),
+        ganhoUber: this.lerNumero('ganhoUber'),
+        ganho99: this.lerNumero('ganho99'),
+        ganhoOutros: this.lerNumero('ganhoOutros'),
+        faturamento: this.lerNumero('faturamento'),
+        combustivel: this.lerNumero('combustivel'),
+        alimentacao: this.lerNumero('alimentacao'),
+        diariaCarro: this.lerNumero('diariaCarro'),
+        outrosGastos: this.lerNumero('outrosGastos'),
+        custoKm: this.lerNumero('custoKm')
+      };
 
-    if (entrada.kmIni > 0 && entrada.kmFim > 0 && entrada.kmFim < entrada.kmIni) {
-      const inputFim = document.getElementById('kmFinal');
-      if (inputFim) {
-        inputFim.classList.add('input-error');
-        inputFim.focus();
-      }
-      this.notificar('⚠️ KM Final não pode ser menor que o KM Inicial!');
-      return;
-    }
-
-    const calc = FinanceEngine.calcularTurno(entrada);
-
-    if (entrada.faturamento <= 0 && calc.kmTotal <= 0) {
-      this.notificar('Informe o Faturamento ou KM Rodado!');
-      return;
-    }
-
-    StorageService.salvarValor(KEYS.CUSTO_KM, entrada.custoKm);
-
-    const dataBR = this.formatarDataBR(entrada.dataISO);
-    const avaliacao = FinanceEngine.avaliarRentabilidade(calc);
-
-    const registro = {
-      id: Date.now(),
-      data: dataBR,
-      dataISO: entrada.dataISO,
-      kmInicial: entrada.kmIni,
-      kmFinal: entrada.kmFim,
-      kmTotal: calc.kmTotal,
-      horas: entrada.horas,
-      corridas: entrada.corridas,
-      ganhoUber: Number(entrada.ganhoUber.toFixed(2)),
-      ganho99: Number(entrada.ganho99.toFixed(2)),
-      ganhoOutros: Number(entrada.ganhoOutros.toFixed(2)),
-      faturamento: Number(entrada.faturamento.toFixed(2)),
-      custosTotais: calc.custosTotais,
-      combustivel: Number(entrada.combustivel.toFixed(2)),
-      alimentacao: Number(entrada.alimentacao.toFixed(2)),
-      diariaCarro: Number(entrada.diariaCarro.toFixed(2)),
-      outrosGastos: Number(entrada.outrosGastos.toFixed(2)),
-      provisaoManut: calc.provisaoManut,
-      lucroLiquido: calc.lucroLiquido,
-      brutoKm: calc.brutoKm,
-      liquidoKm: calc.liquidoKm,
-      liquidoHora: calc.liquidoHora,
-      ticketMedio: calc.ticketMedio,
-      tags: [...this.tagsSelecionadas],
-      obs: obsTexto
-    };
-
-    const turnos = StorageService.obterTurnos();
-
-    if (this.idTurnoEditando) {
-      const idxEdit = turnos.findIndex(t => String(t.id) === String(this.idTurnoEditando));
-      if (idxEdit !== -1) {
-        await Cofre.criarPonto(`Antes de editar turno de ${turnos[idxEdit].data}`);
-        registro.id = turnos[idxEdit].id;
-        turnos[idxEdit] = registro;
-        if (!StorageService.salvarTurnos(turnos)) return;
-        this.cancelarEdicaoTurno(false);
-        Rascunho.limpar();
-        this.tagsSelecionadas = [];
-        this.sincronizarPillsTags();
-        this.exibirRecibo(registro, calc, avaliacao);
-        this.atualizarTudo();
-        this.notificar('Turno atualizado com sucesso!');
+      if (entrada.kmIni > 0 && entrada.kmFim > 0 && entrada.kmFim < entrada.kmIni) {
+        const inputFim = document.getElementById('kmFinal');
+        if (inputFim) {
+          inputFim.classList.add('input-error');
+          inputFim.focus();
+        }
+        this.notificar('⚠️ KM Final não pode ser menor que o KM Inicial!');
         return;
       }
-      this.idTurnoEditando = null;
+
+      const calc = FinanceEngine.calcularTurno(entrada);
+
+      if (entrada.faturamento <= 0 && calc.kmTotal <= 0) {
+        this.notificar('Informe o Faturamento ou KM Rodado!');
+        return;
+      }
+
+      StorageService.salvarValor(KEYS.CUSTO_KM, entrada.custoKm);
+
+      const dataBR = this.formatarDataBR(entrada.dataISO);
+      const avaliacao = FinanceEngine.avaliarRentabilidade(calc);
+
+      const registro = {
+        id: Date.now(),
+        data: dataBR,
+        dataISO: entrada.dataISO,
+        kmInicial: entrada.kmIni,
+        kmFinal: entrada.kmFim,
+        kmTotal: calc.kmTotal,
+        horas: entrada.horas,
+        corridas: entrada.corridas,
+        ganhoUber: Number(entrada.ganhoUber.toFixed(2)),
+        ganho99: Number(entrada.ganho99.toFixed(2)),
+        ganhoOutros: Number(entrada.ganhoOutros.toFixed(2)),
+        faturamento: Number(entrada.faturamento.toFixed(2)),
+        custosTotais: calc.custosTotais,
+        combustivel: Number(entrada.combustivel.toFixed(2)),
+        alimentacao: Number(entrada.alimentacao.toFixed(2)),
+        diariaCarro: Number(entrada.diariaCarro.toFixed(2)),
+        outrosGastos: Number(entrada.outrosGastos.toFixed(2)),
+        provisaoManut: calc.provisaoManut,
+        lucroLiquido: calc.lucroLiquido,
+        brutoKm: calc.brutoKm,
+        liquidoKm: calc.liquidoKm,
+        liquidoHora: calc.liquidoHora,
+        ticketMedio: calc.ticketMedio,
+        tags: [...this.tagsSelecionadas],
+        obs: obsTexto
+      };
+
+      const turnos = StorageService.obterTurnos();
+
+      if (this.idTurnoEditando) {
+        const idxEdit = turnos.findIndex(t => String(t.id) === String(this.idTurnoEditando));
+        if (idxEdit !== -1) {
+          await Cofre.criarPonto(`Antes de editar turno de ${turnos[idxEdit].data}`);
+          registro.id = turnos[idxEdit].id;
+          turnos[idxEdit] = registro;
+          if (!StorageService.salvarTurnos(turnos)) return;
+          this.cancelarEdicaoTurno(false);
+          Rascunho.limpar();
+          this.tagsSelecionadas = [];
+          this.sincronizarPillsTags();
+          this.exibirRecibo(registro, calc, avaliacao);
+          this.atualizarTudo();
+          this.notificar('Turno atualizado com sucesso!');
+          return;
+        }
+        this.idTurnoEditando = null;
+      }
+
+      const assinatura = [entrada.dataISO, calc.kmTotal, entrada.faturamento, calc.custosTotais].join('|');
+      const duplicado = turnos.find(t =>
+        [t.dataISO, t.kmTotal, t.faturamento, t.custosTotais].join('|') === assinatura
+      );
+      if (duplicado) {
+        const salvarMesmoAssim = await Sheet.confirmar({
+          icone: '🧐',
+          titulo: 'Esse turno já foi salvo',
+          subtitulo: `Já existe um fechamento de <b>${StorageService.escaparHTML(duplicado.data)}</b> com os mesmos valores (Lucro <b>${FinanceEngine.moeda(duplicado.lucroLiquido, true)}</b>). Salvar outra vez vai duplicar seus ganhos.`,
+          textoOk: 'Salvar mesmo assim',
+          textoCancelar: 'Não salvar',
+          variante: 'danger'
+        });
+        if (!salvarMesmoAssim) return;
+      }
+
+      turnos.unshift(registro);
+      if (!StorageService.salvarTurnos(turnos)) return;
+
+      StorageService.salvarTurnoAtivo(null);
+      Rascunho.limpar();
+      this.tagsSelecionadas = [];
+      this.sincronizarPillsTags();
+      StorageGuard.pedirPersistencia();
+
+      this.exibirRecibo(registro, calc, avaliacao);
+      this.atualizarTudo();
+      this.notificar('Fechamento salvo com sucesso!');
+    } finally {
+      this._salvandoFechamento = false;
     }
-
-    const assinatura = [entrada.dataISO, calc.kmTotal, entrada.faturamento, calc.custosTotais].join('|');
-    const duplicado = turnos.find(t =>
-      [t.dataISO, t.kmTotal, t.faturamento, t.custosTotais].join('|') === assinatura
-    );
-    if (duplicado) {
-      const salvarMesmoAssim = await Sheet.confirmar({
-        icone: '🧐',
-        titulo: 'Esse turno já foi salvo',
-        subtitulo: `Já existe um fechamento de <b>${StorageService.escaparHTML(duplicado.data)}</b> com os mesmos valores (Lucro <b>${FinanceEngine.moeda(duplicado.lucroLiquido, true)}</b>). Salvar outra vez vai duplicar seus ganhos.`,
-        textoOk: 'Salvar mesmo assim',
-        textoCancelar: 'Não salvar',
-        variante: 'danger'
-      });
-      if (!salvarMesmoAssim) return;
-    }
-
-    turnos.unshift(registro);
-    if (!StorageService.salvarTurnos(turnos)) return;
-
-    StorageService.salvarTurnoAtivo(null);
-    Rascunho.limpar();
-    this.tagsSelecionadas = [];
-    this.sincronizarPillsTags();
-    StorageGuard.pedirPersistencia();
-
-    this.exibirRecibo(registro, calc, avaliacao);
-    this.atualizarTudo();
-    this.notificar('Fechamento salvo com sucesso!');
   },
 
   exibirRecibo(reg, calc, avaliacao) {
@@ -1992,18 +2004,43 @@ const UIController = {
       return;
     }
 
+    const celulaSegura = (val) => {
+      const str = String(val ?? '').replace(/;/g, ',').replace(/[\r\n]+/g, ' ').trim();
+      return /^[=+\-@]/.test(str) ? `'${str}` : str;
+    };
+
     const cols = [
-      'Data', 'Semana_Ano', 'KM_Total', 'Horas', 'Corridas', 'Faturamento_Bruto',
+      'Data', 'Semana_Ano', 'KM_Total', 'Horas', 'Corridas',
+      'Ganho_Uber', 'Ganho_99', 'Ganho_Pix_Outros', 'Faturamento_Bruto',
       'Combustivel', 'Alimentacao', 'Diaria_Carro', 'Outros_Gastos',
-      'Reserva_Manutencao', 'Custo_Total', 'Lucro_Liquido', 'Liquido_KM', 'Ticket_Medio'
+      'Reserva_Manutencao', 'Custo_Total', 'Lucro_Liquido', 'Liquido_KM', 'Ticket_Medio',
+      'Tags', 'Observacao'
     ];
 
     const linhas = turnos.map(t => {
       const infoSem = CalendarEngine.obterInfoSemanaISO(this.parseData(t));
+      const tagsStr = Array.isArray(t.tags) ? t.tags.join(' | ') : '';
       return [
-        t.data || '', infoSem.chaveSemana, t.kmTotal || 0, t.horas || 0, t.corridas || 0, t.faturamento || 0,
-        t.combustivel || 0, t.alimentacao || 0, t.diariaCarro || 0, t.outrosGastos || 0,
-        t.provisaoManut || 0, t.custosTotais || 0, t.lucroLiquido || 0, t.liquidoKm || 0, t.ticketMedio || 0
+        celulaSegura(t.data || ''),
+        celulaSegura(infoSem.chaveSemana),
+        t.kmTotal || 0,
+        t.horas || 0,
+        t.corridas || 0,
+        t.ganhoUber || 0,
+        t.ganho99 || 0,
+        t.ganhoOutros || 0,
+        t.faturamento || 0,
+        t.combustivel || 0,
+        t.alimentacao || 0,
+        t.diariaCarro || 0,
+        t.outrosGastos || 0,
+        t.provisaoManut || 0,
+        t.custosTotais || 0,
+        t.lucroLiquido || 0,
+        t.liquidoKm || 0,
+        t.ticketMedio || 0,
+        celulaSegura(tagsStr),
+        celulaSegura(t.obs || '')
       ].join(';');
     });
 
@@ -2144,12 +2181,17 @@ const UIController = {
     event.target.value = '';
     if (!file) return;
 
+    if (file.size > 5 * 1024 * 1024) {
+      this.notificar('Arquivo muito grande (máximo 5 MB).');
+      return;
+    }
+
     try {
       const texto = await file.text();
       const dados = JSON.parse(texto);
       const listaBruta = Array.isArray(dados) ? dados : (Array.isArray(dados.turnos) ? dados.turnos : null);
       const listaImportada = Array.isArray(listaBruta)
-        ? listaBruta.map((t, idx) => StorageService.sanitizarTurno(t, idx)).filter(Boolean)
+        ? listaBruta.slice(0, 5000).map((t, idx) => StorageService.sanitizarTurno(t, idx)).filter(Boolean)
         : [];
 
       if (listaImportada.length === 0) {
@@ -2176,7 +2218,9 @@ const UIController = {
         if (!mapa.has(chave)) mapa.set(chave, t);
       });
 
-      const mesclados = Array.from(mapa.values());
+      const mesclados = Array.from(mapa.values()).sort(
+        (a, b) => this.parseData(b).getTime() - this.parseData(a).getTime()
+      );
       StorageService.salvarTurnos(mesclados);
 
       if (dados.configuracoes && typeof dados.configuracoes === 'object') {
@@ -2229,6 +2273,13 @@ const UIController = {
 };
 
 window.addEventListener('DOMContentLoaded', () => UIController.iniciar());
+
+document.addEventListener('visibilitychange', () => {
+  document.body.classList.toggle('app-em-background', document.hidden);
+  if (!document.hidden && StorageService.obterTurnoAtivo() && !Sheet._resolver) {
+    UIController.renderizarTurnoVivo();
+  }
+});
 
 window.addEventListener('storage', (e) => {
   if (!e.key || Object.values(KEYS).includes(e.key)) {

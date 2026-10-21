@@ -6,13 +6,14 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self';">
   <meta name="referrer" content="no-referrer">
   <meta name="theme-color" content="#000000">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Meu Turno">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
-  <link rel="stylesheet" href="./css/styles.css?v=15">
+  <link rel="stylesheet" href="./css/styles.css?v=16">
   <title>Meu Turno — Driver</title>
 </head>
 <body>
@@ -138,7 +139,7 @@
       <div id="kpisManutencaoOleo" class="kpi-row-2 mb-12"></div>
 
       <div class="grid-3">
-        <button type="button" class="quick-exp-btn" onclick="UIController.togglePainel('painelSimuladorCorrida')">
+        <button type="button" class="quick-exp-btn" aria-expanded="false" aria-controls="painelSimuladorCorrida" onclick="UIController.togglePainel('painelSimuladorCorrida')">
           <span>🚦</span>Vale a Corrida?
         </button>
         <button type="button" class="quick-exp-btn" onclick="UIController.configurarTrocaOleo()">
@@ -236,7 +237,7 @@
     <div class="uber-card">
       <div class="card-header-row">
         <h2 class="card-title">2. Faturamento Bruto</h2>
-        <button type="button" class="chip-btn" onclick="UIController.togglePainel('painelApps')">➕ Somar por App</button>
+        <button type="button" class="chip-btn" aria-expanded="false" aria-controls="painelApps" onclick="UIController.togglePainel('painelApps')">➕ Somar por App</button>
       </div>
 
       <div id="painelApps" class="collapsible-panel">
@@ -266,7 +267,7 @@
     <div class="uber-card">
       <div class="card-header-row">
         <h2 class="card-title">3. Gastos e Manutenção</h2>
-        <button type="button" class="chip-btn" onclick="UIController.togglePainel('painelCalcComb')">⛽ Calc. KM/L</button>
+        <button type="button" class="chip-btn" aria-expanded="false" aria-controls="painelCalcComb" onclick="UIController.togglePainel('painelCalcComb')">⛽ Calc. KM/L</button>
       </div>
 
       <div id="painelCalcComb" class="collapsible-panel">
@@ -359,7 +360,7 @@
       <input type="file" id="inputImportarBackup" class="hidden" accept=".json,application/json" aria-label="Importar arquivo de backup JSON" onchange="UIController.importarBackupArquivo(event)">
 
       <div class="grid-2 mt-8">
-        <button type="button" class="btn-sub-action" onclick="UIController.togglePainel('painelPontosRestauracao')">
+        <button type="button" class="btn-sub-action" aria-expanded="false" aria-controls="painelPontosRestauracao" onclick="UIController.togglePainel('painelPontosRestauracao')">
           ⏪ Desfazer Exclusão
         </button>
         <button type="button" class="btn-sub-action" onclick="UIController.exportarCSV()">
@@ -431,10 +432,10 @@
 <div id="toast" class="uber-toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <!-- MÓDULOS JAVASCRIPT DO APP -->
-<script src="./js/storage.js?v=15"></script>
-<script src="./js/calendar.js?v=15"></script>
-<script src="./js/finance.js?v=15"></script>
-<script src="./js/sheet.js?v=15"></script>
-<script src="./js/ui.js?v=15"></script>
+<script src="./js/storage.js?v=16"></script>
+<script src="./js/calendar.js?v=16"></script>
+<script src="./js/finance.js?v=16"></script>
+<script src="./js/sheet.js?v=16"></script>
+<script src="./js/ui.js?v=16"></script>
 </body>
 </html>
