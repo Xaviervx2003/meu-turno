@@ -67,6 +67,11 @@ const UIController = {
     if (kml > 0) document.getElementById('consumoKmL').value = kml;
     if (preco > 0) document.getElementById('precoLitro').value = preco;
 
+    const metaKmSalva = StorageService.obterNumero(KEYS.META_KM_INDRIVE, DEFAULTS.META_KM_INDRIVE);
+    const metaKmStr = FinanceEngine.numeroBR(metaKmSalva > 0 ? metaKmSalva : 1.40, 2);
+    if (document.getElementById('simMetaKm')) document.getElementById('simMetaKm').value = metaKmStr;
+    if (document.getElementById('hudMetaKm')) document.getElementById('hudMetaKm').value = metaKmStr;
+
     Rascunho.iniciarMonitoramento();
     await StorageGuard.verificarStatusPersistencia();
 
@@ -1635,15 +1640,49 @@ const UIController = {
     bolha.classList.remove('hidden', 'mini');
     document.body.classList.add('hud-foco');
 
-    // Se ainda não digitou valores no simulador, carrega exemplo padrão (R$ 20 / 2.4km busca / 18.6km)
-    if (this.lerNumero('simValor') <= 0) {
-      document.getElementById('simValor').value = '20';
-      document.getElementById('simKmBusca').value = '2.4';
-      document.getElementById('simKm').value = '18.6';
+    // Se ainda não digitou valores, carrega o exemplo real (1,8 km pegar + 5,4 km deixar × R$ 1,40/km = R$ 10,08)
+    if (this.lerNumero('simKmBusca') <= 0 && this.lerNumero('simKm') <= 0) {
+      document.getElementById('simKmBusca').value = '1,8';
+      document.getElementById('simKm').value = '5,4';
     }
     this.inicializarArrasteBolha();
-    this.simularCorrida(false);
-    this.notificar('🫧 Modo Bolha limpo ativado! Toque no ✕ para voltar ao painel.');
+    this.simularCorrida(false, false);
+    setTimeout(() => {
+      const elBusca = document.getElementById('hudKmBusca');
+      if (elBusca) {
+        elBusca.focus();
+        elBusca.select();
+      }
+    }, 80);
+  },
+
+  aoDigitarNaBolha() {
+    const valBusca = document.getElementById('hudKmBusca')?.value ?? '';
+    const valCorrida = document.getElementById('hudKmCorrida')?.value ?? '';
+    const valTaxa = document.getElementById('hudMetaKm')?.value ?? '';
+
+    if (document.getElementById('simKmBusca')) document.getElementById('simKmBusca').value = valBusca;
+    if (document.getElementById('simKm')) document.getElementById('simKm').value = valCorrida;
+    if (document.getElementById('simMetaKm') && valTaxa.trim() !== '') {
+      document.getElementById('simMetaKm').value = valTaxa;
+    }
+
+    const taxaNum = this.lerNumero('hudMetaKm');
+    if (taxaNum > 0) {
+      StorageService.salvarValor(KEYS.META_KM_INDRIVE, taxaNum);
+    }
+
+    this.simularCorrida(false, true);
+  },
+
+  limparCamposBolha() {
+    ['hudKmBusca', 'hudKmCorrida', 'simKmBusca', 'simKm', 'simValor'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    this.simularCorrida(false, true);
+    const elBusca = document.getElementById('hudKmBusca');
+    if (elBusca) elBusca.focus();
   },
 
   fecharBolhaHud() {
@@ -1661,11 +1700,11 @@ const UIController = {
       icone: '📲',
       titulo: 'Bolha que lê o inDrive sozinha',
       subtitulo:
-        'O navegador não deixa um site ler a tela de outro app. Para a bolha aparecer sozinha quando tocar corrida, instale o app <b>Meu Turno Bolha</b> (Android):<br><br>' +
-        '1. Toque em <b>Baixar APK</b> e instale (permita "fontes desconhecidas").<br>' +
-        '2. Abra o app e toque em <b>Permitir janela flutuante</b>.<br>' +
-        '3. Toque em <b>Ativar leitor de tela</b> e ligue <b>Meu Turno Bolha</b>.<br>' +
-        '4. Se aparecer "Configuração restrita": Configurações › Apps › Meu Turno Bolha › ⋮ › <b>Permitir configurações restritas</b>.',
+        'Para instalar o app Android (<b>Meu Turno Bolha</b>) sem bloqueio:<br><br>' +
+        '1. Na <b>Play Store</b> › toque na sua foto › <b>Play Protect</b> › ⚙️ › pause <b>"Verificar apps com o Play Protect"</b>.<br>' +
+        '2. Baixe e instale o <b>MeuTurno-Bolha.apk</b>.<br>' +
+        '3. No Samsung: Configurações › Aplicativos › Meu Turno Bolha › ⋮ › <b>Permitir configurações restritas</b>.<br>' +
+        '4. Ative a <b>Janela Flutuante</b> e a <b>Acessibilidade</b> no app!',
       textoOk: '⬇️ Baixar APK',
       textoCancelar: 'Agora não',
       variante: 'green'
@@ -1897,19 +1936,57 @@ const UIController = {
     this.notificar('✅ Dados da tela do inDrive extraídos!');
   },
 
-  simularCorrida(forcarVoz = false) {
-    const valor = this.lerNumero('simValor');
+  simularCorrida(forcarVoz = false, origemBolha = false) {
     const kmBusca = this.lerNumero('simKmBusca');
     const kmCorrida = this.lerNumero('simKm');
-    const kmTotal = kmBusca + kmCorrida;
+    const kmTotal = Number((kmBusca + kmCorrida).toFixed(2));
+    const fatorInput = this.lerNumero('simMetaKm');
+    const fatorKm = fatorInput > 0
+      ? fatorInput
+      : (StorageService.obterNumero(KEYS.META_KM_INDRIVE, DEFAULTS.META_KM_INDRIVE) || 1.40);
+
+    if (fatorInput > 0) {
+      StorageService.salvarValor(KEYS.META_KM_INDRIVE, fatorInput);
+    }
+
+    if (!origemBolha) {
+      const elHudBusca = document.getElementById('hudKmBusca');
+      const elHudCorrida = document.getElementById('hudKmCorrida');
+      const elHudTaxa = document.getElementById('hudMetaKm');
+      if (elHudBusca && document.activeElement !== elHudBusca) {
+        elHudBusca.value = document.getElementById('simKmBusca')?.value || '';
+      }
+      if (elHudCorrida && document.activeElement !== elHudCorrida) {
+        elHudCorrida.value = document.getElementById('simKm')?.value || '';
+      }
+      if (elHudTaxa && document.activeElement !== elHudTaxa) {
+        elHudTaxa.value = document.getElementById('simMetaKm')?.value || FinanceEngine.numeroBR(fatorKm, 2);
+      }
+    }
+
+    const valorOferta = this.lerNumero('simValor');
     const minInformado = this.lerNumero('simMin');
     const avaliacoes = Math.round(this.lerNumero('simAvaliacoes'));
     const bairroBruto = (document.getElementById('simBairro')?.value || '').trim();
     const out = document.getElementById('resultadoSimulador');
-    if (!out) return;
+    const bolha = document.getElementById('bolhaHudFlutuante');
 
-    if (valor <= 0 || kmTotal <= 0) {
-      out.innerHTML = 'Digite a oferta (R$), KM de busca e KM da corrida (ou toque em <b>📋 Ler Texto</b>) para ver o lucro real e a contraproposta ideal.';
+    if (kmTotal <= 0) {
+      if (out) {
+        out.innerHTML = 'Digite <b>🔵 Pegar (A)</b> e <b>🟢 Deixar (B)</b> para multiplicar automaticamente por <b>R$ 1,40/km</b> e ver o valor da corrida.';
+      }
+      if (bolha) {
+        bolha.style.setProperty('--hud-cor', 'var(--uber-blue)');
+        const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+        set('hudVeredito', `DIGITE PEGAR (A) E DEIXAR (B) × R$ ${FinanceEngine.numeroBR(fatorKm, 2)}/KM`);
+        set('hudSobra', 'R$ 0,00');
+        set('hudSobraSub', '✏️ Digite os KM abaixo');
+        const elCon = document.getElementById('hudContra');
+        if (elCon) {
+          elCon.classList.remove('ok');
+          elCon.innerHTML = '👆 Toque em <b>🔵 PEGAR (A)</b> e <b>🟢 DEIXAR (B)</b> para calcular na hora';
+        }
+      }
       return;
     }
 
@@ -1935,26 +2012,30 @@ const UIController = {
     const custoCombustivel = kmTotal * custoCombKm;
     const custoManutencao = kmTotal * custoKmManut;
     const custoTotalCorrida = kmTotal * custoOperacionalKm;
-    const lucroCorrida = valor - custoTotalCorrida;
 
-    const reaisPorKmBruto = valor / kmTotal;
+    // Multiplicação direta: (Pegar A + Deixar B) × 1,40/km (ou fator configurado)
+    const fatorAplicado = temVoltaVazia ? (fatorKm + 0.30) : fatorKm;
+    const valorMultiplicado = kmTotal * fatorAplicado;
+    const lucroNoMultiplicado = valorMultiplicado - custoTotalCorrida;
+
+    const btnBaixo = Math.floor(valorMultiplicado);
+    const btnArred = Math.round(valorMultiplicado);
+    const btnTeto = Math.ceil(valorMultiplicado);
+    const txtBotoesInDrive = (btnBaixo === btnTeto || Math.abs(valorMultiplicado - btnArred) < 0.05)
+      ? FinanceEngine.moedaCurta(btnArred, true)
+      : `${FinanceEngine.moedaCurta(btnBaixo, true)} ou ${FinanceEngine.moedaCurta(btnTeto, true)}`;
+
+    const valorBase = valorOferta > 0 ? valorOferta : valorMultiplicado;
+    const lucroCorrida = valorBase - custoTotalCorrida;
+    const reaisPorKmBruto = valorBase / kmTotal;
     const reaisPorKmLiq = lucroCorrida / kmTotal;
-    const ganhoHoraBruto = (valor / (min / 60));
+    const ganhoHoraBruto = (valorBase / (min / 60));
     const ganhoHoraLiq = (lucroCorrida / (min / 60));
-
-    // Cálculo de Contraproposta na Canetinha (✏️) do inDrive:
-    // Meta padrão: R$ 1,50/km bruto (ou R$ 1,80/km se tiver volta vazia) e pelo menos R$ 1,00/km líquido
-    const metaKmBrutoAlvo = temVoltaVazia ? 1.80 : 1.50;
-    const contraMinima = Math.ceil(Math.max(
-      kmTotal * metaKmBrutoAlvo,
-      custoTotalCorrida + (kmTotal * (temVoltaVazia ? 1.15 : 0.95))
-    ));
-    const contraBoa = Math.ceil(kmTotal * (temVoltaVazia ? 2.15 : 1.85));
 
     // Alertas inteligentes
     const alertas = [];
     if (temVoltaVazia) {
-      alertas.push(`⚠️ <b>Volta Vazia (${StorageService.escaparHTML(bairroBruto)}):</b> destino afastado; exija contraproposta maior para cobrir o retorno.`);
+      alertas.push(`⚠️ <b>Volta Vazia (${StorageService.escaparHTML(bairroBruto)}):</b> somado +R$ 0,30/km para cobrir o retorno.`);
     }
     if (kmBusca >= 2.5) {
       alertas.push(`📍 <b>Busca longa (${FinanceEngine.numeroBR(kmBusca, 1)} km):</b> deslocamento alto até o passageiro.`);
@@ -1963,83 +2044,73 @@ const UIController = {
       alertas.push(`👤 <b>Passageiro novato (${avaliacoes} aval.):</b> poucas corridas no histórico; redobre a atenção.`);
     }
 
-    let veredito = '🟢 <b>BOA! VALE A PENA ACEITAR</b>';
-    let vereditoVoz = 'Corrida boa';
+    let veredito = `🟢 <b>COBRAR ${FinanceEngine.moeda(valorMultiplicado)} (× R$ ${FinanceEngine.numeroBR(fatorAplicado, 2)}/km)</b>`;
+    let vereditoVoz = `Cobrar ${Math.round(valorMultiplicado)} reais`;
     let cor = 'var(--uber-green)';
 
-    const minLiqKmAceitavel = temVoltaVazia ? 1.10 : 0.90;
-    const minLiqKmBom = temVoltaVazia ? 1.50 : 1.30;
-
-    if (reaisPorKmLiq < minLiqKmAceitavel || ganhoHoraLiq < 22) {
-      veredito = '🔴 <b>RUIM (Recusar ou Contrapropor)</b>';
-      vereditoVoz = 'Corrida ruim';
-      cor = 'var(--uber-red)';
-    } else if (reaisPorKmLiq < minLiqKmBom || ganhoHoraLiq < 32) {
-      veredito = '🟡 <b>REGULAR (Peça Contraproposta)</b>';
-      vereditoVoz = 'Corrida regular';
-      cor = 'var(--uber-yellow)';
+    if (valorOferta > 0) {
+      if (valorOferta + 0.05 < valorMultiplicado) {
+        veredito = `🔴 <b>OFERTA BAIXA (${FinanceEngine.moeda(valorOferta)}) • PEÇA ${txtBotoesInDrive}</b>`;
+        vereditoVoz = `Oferta baixa. Peça ${btnTeto} reais`;
+        cor = 'var(--uber-red)';
+      } else {
+        veredito = `🟢 <b>BOA! OFERTA (${FinanceEngine.moeda(valorOferta)}) BATE R$ ${FinanceEngine.numeroBR(fatorAplicado, 2)}/KM</b>`;
+        vereditoVoz = 'Corrida boa, pode aceitar';
+        cor = 'var(--uber-green)';
+      }
     }
 
-    const htmlContraproposta = valor < contraMinima
-      ? `<div class="sim-counter-box">
-           ✏️ <b>Sugestão de Contraproposta (inDrive):</b><br>
-           Mínimo justo: <b class="text-yellow">${FinanceEngine.moedaCurta(contraMinima)}</b> (${FinanceEngine.moeda(metaKmBrutoAlvo)}/km) •
-           Ideal: <b class="text-green">${FinanceEngine.moedaCurta(contraBoa)}</b>
-         </div>`
-      : `<div class="sim-counter-box">
-           ✅ Oferta de <b>${FinanceEngine.moeda(valor)}</b> já bate a meta mínima (${FinanceEngine.moedaCurta(contraMinima)}).
-         </div>`;
+    const htmlContraproposta = `<div class="sim-counter-box">
+      ✏️ <b>Valor da Corrida (${FinanceEngine.numeroBR(kmBusca, 1)} + ${FinanceEngine.numeroBR(kmCorrida, 1)} = ${FinanceEngine.numeroBR(kmTotal, 1)} km × R$ ${FinanceEngine.numeroBR(fatorAplicado, 2)}):</b>
+      <b class="text-green">${FinanceEngine.moeda(valorMultiplicado)}</b> ➔ Peça <b class="text-yellow">${txtBotoesInDrive}</b> no inDrive
+    </div>`;
 
     const htmlAlertas = alertas.length > 0
       ? `<div class="sim-alert-list">${alertas.map(a => `<div class="sim-alert-item">${a}</div>`).join('')}</div>`
       : '';
 
-    out.innerHTML = `
-      <div class="sim-verdict-box" style="border-left-color:${cor};">
-        <div class="sim-verdict-title" style="color:${cor};">
-          <span>${veredito}</span>
-          <button type="button" class="chip-btn" onclick="UIController.simularCorrida(true)" title="Ouvir análise em voz alta">🔊 Ouvir</button>
+    if (out) {
+      out.innerHTML = `
+        <div class="sim-verdict-box" style="border-left-color:${cor};">
+          <div class="sim-verdict-title" style="color:${cor};">
+            <span>${veredito}</span>
+            <button type="button" class="chip-btn" onclick="UIController.simularCorrida(true)" title="Ouvir valor em voz alta">🔊 Ouvir</button>
+          </div>
+          <div class="sim-verdict-main">
+            Valor: <span style="color:var(--uber-white)">${FinanceEngine.moeda(valorMultiplicado)}</span> •
+            Sobra Livre: <span style="color:${cor}">${FinanceEngine.moeda(lucroCorrida)}</span>
+          </div>
+          <div class="sim-verdict-sub">
+            <b>KM Total: ${FinanceEngine.numeroBR(kmTotal, 1)} km</b> (🔵 Pegar ${FinanceEngine.numeroBR(kmBusca, 1)} km + 🟢 Deixar ${FinanceEngine.numeroBR(kmCorrida, 1)} km • ~${min} min)<br>
+            Custo comb./manut.: ${FinanceEngine.moeda(custoTotalCorrida)} • Líquido/h: ~${FinanceEngine.moedaCurta(ganhoHoraLiq)}/h (${FinanceEngine.moeda(reaisPorKmLiq)}/km líq.)
+          </div>
+          ${htmlContraproposta}
+          ${htmlAlertas}
         </div>
-        <div class="sim-verdict-main">
-          Sobra Livre: <span style="color:${cor}">${FinanceEngine.moeda(lucroCorrida)}</span> •
-          Líq: ${FinanceEngine.moeda(reaisPorKmLiq)}/km •
-          ${FinanceEngine.moedaCurta(ganhoHoraLiq)}/h
-        </div>
-        <div class="sim-verdict-sub">
-          <b>R$/km Real: ${FinanceEngine.moeda(reaisPorKmBruto)}/km</b> (${FinanceEngine.numeroBR(kmTotal, 1)} km total • ${tempoEstimado ? `~${min} min est.` : `${min} min`})<br>
-          Combustível: ${FinanceEngine.moeda(custoCombustivel)} + Manut.: ${FinanceEngine.moeda(custoManutencao)} (Bruto/h: ~${FinanceEngine.moedaCurta(ganhoHoraBruto)}/h)
-        </div>
-        ${htmlContraproposta}
-        ${htmlAlertas}
-      </div>
-    `;
+      `;
+    }
 
-    // Sincroniza a Bolha Flutuante (#bolhaHudFlutuante)
-    const bolha = document.getElementById('bolhaHudFlutuante');
+    // Sincroniza a Bolha Flutuante (#bolhaHudFlutuante) com foco direto no valor multiplicado (Pegar + Deixar × 1,40)
     if (bolha) {
-      const rotulo = vereditoVoz === 'Corrida boa'
-        ? 'Boa • pode aceitar'
-        : (vereditoVoz === 'Corrida regular' ? 'Regular • contraproponha' : 'Ruim • recuse ou contraproponha');
       bolha.style.setProperty('--hud-cor', cor);
       const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
-      set('hudVeredito', rotulo);
-      set('hudSobra', FinanceEngine.moeda(lucroCorrida, true));
-      set('hudKmReal', FinanceEngine.moeda(reaisPorKmBruto, true));
-      set('hudHora', `${FinanceEngine.moedaCurta(ganhoHoraLiq, true)}/h`);
-      set('hudKm', `${FinanceEngine.numeroBR(kmTotal, 1)} km`);
+      set(
+        'hudVeredito',
+        `${FinanceEngine.numeroBR(kmTotal, 1)} KM (${FinanceEngine.numeroBR(kmBusca, 1)} + ${FinanceEngine.numeroBR(kmCorrida, 1)}) × R$ ${FinanceEngine.numeroBR(fatorAplicado, 2)}/KM`
+      );
+      set('hudSobra', FinanceEngine.moeda(valorMultiplicado, true));
+      set('hudSobraSub', `✏️ Peça ${txtBotoesInDrive}`);
+
       const elCon = document.getElementById('hudContra');
       if (elCon) {
-        const abaixo = valor < contraMinima;
-        elCon.classList.toggle('ok', !abaixo);
-        elCon.innerHTML = abaixo
-          ? `✏️ Peça no mínimo <b>${FinanceEngine.moedaCurta(contraMinima, true)}</b> · ideal <b>${FinanceEngine.moedaCurta(contraBoa, true)}</b>`
-          : `✅ ${FinanceEngine.moedaCurta(valor, true)} já bate sua meta (mín. ${FinanceEngine.moedaCurta(contraMinima, true)})`;
+        elCon.classList.toggle('ok', cor === 'var(--uber-green)');
+        elCon.innerHTML =
+          `💰 Sobra livre: <b>${FinanceEngine.moeda(lucroNoMultiplicado, true)}</b> • ` +
+          `⛽ Custo: ${FinanceEngine.moeda(custoTotalCorrida, true)} (${FinanceEngine.numeroBR(kmTotal, 1)} km)`;
       }
     }
 
-    const centavosOuReais = FinanceEngine.numeroBR(reaisPorKmBruto, 2);
-    const fala = `${vereditoVoz}. ${centavosOuReais} por quilômetro real. Sobra livre de ${Math.round(lucroCorrida)} reais. ` +
-      (valor < contraMinima ? `Contraproposta mínima: ${contraMinima} reais.` : 'Pode aceitar.');
+    const fala = `${FinanceEngine.numeroBR(kmTotal, 1)} quilômetros no total. Valor a ${FinanceEngine.numeroBR(fatorAplicado, 2)} por quilômetro: ${FinanceEngine.numeroBR(valorMultiplicado, 2)} reais. Sobra livre de ${Math.round(lucroNoMultiplicado)} reais.`;
     this.falarVereditoSimulador(fala, forcarVoz);
   },
 

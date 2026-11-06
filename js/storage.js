@@ -15,14 +15,16 @@ const KEYS = {
   KM_PROX_OLEO: 'meu_turno_km_prox_oleo',
   CUSTO_FIXO_MES: 'meu_turno_custo_fixo_mes',
   BAIXA_MANUT: 'meu_turno_baixa_manut',
-  MODO_PRIVACIDADE: 'meu_turno_privacidade'
+  MODO_PRIVACIDADE: 'meu_turno_privacidade',
+  META_KM_INDRIVE: 'meu_turno_meta_km_indrive'
 };
 
 const DEFAULTS = {
   CUSTO_KM: 0.15,
   META_DIARIA: 200.00,
   META_SEMANAL: 1200.00,
-  META_MENSAL: 5000.00
+  META_MENSAL: 5000.00,
+  META_KM_INDRIVE: 1.40
 };
 
 const StorageService = {
@@ -250,7 +252,7 @@ const Cofre = {
     KEYS.META_DIARIA, KEYS.META_SEMANAL, KEYS.META_MENSAL,
     KEYS.CUSTO_KM, KEYS.CONSUMO_KML, KEYS.PRECO_LITRO,
     KEYS.KM_PROX_OLEO, KEYS.CUSTO_FIXO_MES, KEYS.BAIXA_MANUT,
-    KEYS.ULTIMO_BACKUP, KEYS.MODO_PRIVACIDADE
+    KEYS.ULTIMO_BACKUP, KEYS.MODO_PRIVACIDADE, KEYS.META_KM_INDRIVE
   ],
 
   async espelharConfigs() {

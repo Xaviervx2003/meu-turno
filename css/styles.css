@@ -1675,7 +1675,7 @@ body.sheet-aberto { overflow: hidden; }
 
 
 /* ==========================================================================
-   12. BOLHA HUD FLUTUANTE v2 (SEMÁFORO 🟢🟡🔴 COMPACTO, ARRASTÁVEL E MINIMIZÁVEL)
+   12. BOLHA HUD FLUTUANTE v3 (CALCULADORA DIRETA PEGAR A + DEIXAR B × 1,40/KM)
    ========================================================================== */
 .hud {
   --hud-cor: var(--uber-green);
@@ -1685,15 +1685,15 @@ body.sheet-aberto { overflow: hidden; }
   transform: translateX(-50%);
   width: calc(100% - 20px);
   max-width: 400px;
-  background: rgba(10, 10, 10, 0.96);
+  background: rgba(10, 10, 10, 0.98);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
-  box-shadow: 0 0 0 2px var(--hud-cor), 0 14px 40px rgba(0, 0, 0, 0.8);
-  padding: 10px 12px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  box-shadow: 0 0 0 2px var(--hud-cor), 0 14px 40px rgba(0, 0, 0, 0.85);
+  padding: 10px 12px;
   z-index: 260;
-  touch-action: none;
+  touch-action: manipulation;
   font-variant-numeric: tabular-nums;
   transition: box-shadow 0.2s ease, width 0.2s ease;
 }
@@ -1702,8 +1702,9 @@ body.sheet-aberto { overflow: hidden; }
 .hud-top {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   cursor: grab;
+  touch-action: none;
 }
 .hud-luz {
   flex-shrink: 0;
@@ -1718,12 +1719,12 @@ body.sheet-aberto { overflow: hidden; }
   min-width: 0;
   display: flex;
   flex-direction: column;
-  line-height: 1.1;
+  line-height: 1.12;
 }
 .hud-veredito {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 900;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
   color: var(--hud-cor);
   white-space: nowrap;
@@ -1733,7 +1734,8 @@ body.sheet-aberto { overflow: hidden; }
 .hud-sobra-wrap {
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 7px;
+  flex-wrap: wrap;
 }
 .hud-sobra {
   font-size: 1.55rem;
@@ -1742,92 +1744,115 @@ body.sheet-aberto { overflow: hidden; }
   letter-spacing: -0.5px;
 }
 .hud-sobra-wrap small {
-  font-size: 0.68rem;
-  font-weight: 700;
-  color: var(--uber-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--uber-yellow);
 }
 .hud-icon-btn {
   flex-shrink: 0;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   border: none;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.09);
   color: var(--uber-white);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 900;
   cursor: pointer;
 }
-
-.hud-body { margin-top: 10px; }
-
-.hud-chips {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+.hud-icon-btn:active {
+  background: rgba(255, 255, 255, 0.22);
 }
-.hud-chip {
+.hud-btn-clear {
+  background: rgba(39, 110, 241, 0.22);
+  border: 1px solid rgba(39, 110, 241, 0.5);
+}
+
+.hud-body { margin-top: 8px; }
+
+.hud-inputs {
+  display: grid;
+  grid-template-columns: 1.15fr 1.15fr 0.9fr;
+  gap: 7px;
+}
+.hud-input-box {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  background: rgba(255, 255, 255, 0.06);
+  justify-content: center;
   border-radius: 12px;
-  padding: 7px 9px;
-  min-width: 0;
+  padding: 5px 8px 6px;
+  margin: 0;
+  cursor: text;
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-.hud-chip small {
-  font-size: 0.6rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  color: var(--uber-muted);
+.hud-box-busca {
+  border-color: rgba(39, 110, 241, 0.7);
+  background: rgba(39, 110, 241, 0.12);
 }
-.hud-chip b {
-  font-size: 0.9rem;
+.hud-box-corrida {
+  border-color: rgba(6, 193, 103, 0.7);
+  background: rgba(6, 193, 103, 0.12);
+}
+.hud-box-taxa {
+  border-color: rgba(255, 192, 67, 0.5);
+  background: rgba(255, 192, 67, 0.08);
+}
+.hud-input-box:focus-within {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.22);
+}
+.hud-input-label {
+  font-size: 0.58rem;
   font-weight: 900;
-  color: var(--uber-white);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: #e2e2e2;
+  margin-bottom: 2px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+.hud-input-row {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+.hud-input-row input {
+  width: 100%;
+  min-height: 26px;
+  height: 26px;
+  margin: 0;
+  padding: 0;
+  border: none !important;
+  background: transparent !important;
+  color: var(--uber-white);
+  font-size: 1.15rem;
+  font-weight: 900;
+  line-height: 1;
+  outline: none;
+}
+.hud-input-row small {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--uber-muted);
 }
 
 .hud-contra {
-  margin-top: 8px;
-  padding: 8px 10px;
-  border-radius: 12px;
+  margin-top: 7px;
+  padding: 7px 10px;
+  border-radius: 10px;
   background: rgba(255, 192, 67, 0.1);
   color: var(--uber-yellow);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
 }
 .hud-contra.ok {
-  background: rgba(6, 193, 103, 0.1);
+  background: rgba(6, 193, 103, 0.12);
   color: var(--uber-green);
 }
 .hud-contra b { color: var(--uber-white); }
 
-.hud-steps {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 5px;
-  margin-top: 8px;
-}
-.hud-steps button {
-  min-height: 34px;
-  border-radius: 10px;
-  border: none;
-  background: rgba(255, 255, 255, 0.07);
-  color: var(--uber-white);
-  font-size: 0.7rem;
-  font-weight: 800;
-  cursor: pointer;
-}
-.hud-steps button:active { background: rgba(255, 255, 255, 0.16); }
-.hud-steps button.accent {
-  background: var(--uber-blue);
-}
-
-/* Modo minimizado: vira uma pílula com a luz e a sobra */
+/* Modo minimizado: vira uma pílula com a luz e o valor */
 .hud.mini {
   width: auto;
   max-width: none;
@@ -1835,7 +1860,8 @@ body.sheet-aberto { overflow: hidden; }
   border-radius: 999px;
 }
 .hud.mini .hud-body,
-.hud.mini .hud-sobra-wrap small { display: none; }
+.hud.mini .hud-sobra-wrap small,
+.hud.mini .hud-btn-clear { display: none; }
 .hud.mini .hud-sobra { font-size: 1.1rem; }
 .hud.mini .hud-icon-btn { width: 28px; height: 28px; font-size: 0.75rem; }
 
@@ -1849,23 +1875,7 @@ body.hud-foco .bottom-nav {
   display: none !important;
 }
 body.hud-foco .hud {
-  top: 12px !important;
-  width: calc(100% - 16px);
+  top: 8px !important;
+  width: calc(100% - 14px);
   max-width: 440px;
-}
-
-.hud-apk-bar {
-  margin-top: 8px;
-  width: 100%;
-  min-height: 36px;
-  border-radius: 10px;
-  border: 1px solid rgba(6, 193, 103, 0.35);
-  background: rgba(6, 193, 103, 0.12);
-  color: var(--uber-green);
-  font-size: 0.72rem;
-  font-weight: 800;
-  cursor: pointer;
-}
-.hud-apk-bar:active {
-  background: rgba(6, 193, 103, 0.22);
 }
