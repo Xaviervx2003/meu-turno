@@ -1,0 +1,41 @@
+name: Gerar APK — Meu Turno Bolha (inDrive)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Configurar Gradle 8.7
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.7'
+
+      - name: Compilar APK (MeuTurno-Bolha.apk)
+        working-directory: ./android-indrive-reader
+        run: gradle assembleDebug
+
+      - name: Preparar arquivo MeuTurno-Bolha.apk
+        run: cp android-indrive-reader/app/build/outputs/apk/debug/app-debug.apk MeuTurno-Bolha.apk
+
+      - name: Publicar APK no GitHub Releases (bolha-latest)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete bolha-latest --yes --cleanup-tag || true
+          gh release create bolha-latest MeuTurno-Bolha.apk --title "Meu Turno Bolha — Leitor Automático inDrive" --notes "Instale este APK no Android e ative a Janela Flutuante e a Acessibilidade para ler a tela do inDrive automaticamente."
