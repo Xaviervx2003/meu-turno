@@ -1624,51 +1624,266 @@ const UIController = {
     this.notificar(`${FinanceEngine.moeda(gastoOficina)} abatidos do Caixa de Manutenção!`);
   },
 
-  simularCorrida() {
+  vozSimuladorAtiva: false,
+  ultimoTextoFaladoSim: '',
+  _timerVozSim: null,
+
+  alternarVozSimulador() {
+    this.vozSimuladorAtiva = !this.vozSimuladorAtiva;
+    const btn = document.getElementById('btnVozSimulador');
+    if (btn) {
+      btn.textContent = this.vozSimuladorAtiva ? '🔊 Voz ON' : '🔇 Voz';
+      btn.setAttribute('aria-pressed', String(this.vozSimuladorAtiva));
+    }
+    if (this.vozSimuladorAtiva) {
+      this.notificar('🔊 Aviso por voz ativado no simulador!');
+      this.simularCorrida(true);
+    } else if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+  },
+
+  falarVereditoSimulador(texto, forcar = false) {
+    if ((!this.vozSimuladorAtiva && !forcar) || !('speechSynthesis' in window) || !texto) return;
+    clearTimeout(this._timerVozSim);
+    this._timerVozSim = setTimeout(() => {
+      try {
+        window.speechSynthesis.cancel();
+        const msg = new SpeechSynthesisUtterance(texto);
+        msg.lang = 'pt-BR';
+        msg.rate = 1.12;
+        window.speechSynthesis.speak(msg);
+      } catch {}
+    }, forcar ? 50 : 500);
+  },
+
+  selecionarBairroSimulador(bairro) {
+    const input = document.getElementById('simBairro');
+    if (!input) return;
+    input.value = input.value === bairro ? '' : bairro;
+    this.simularCorrida(true);
+  },
+
+  async colarTextoOfertaInDrive() {
+    let textoInicial = '';
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        textoInicial = await navigator.clipboard.readText();
+      }
+    } catch {}
+
+    const corpoHTML = `
+      <div class="sheet-input-wrap" style="padding:10px 12px;">
+        <textarea id="sheetTextoInDrive" rows="4"
+          style="width:100%;background:transparent;border:none;color:#fff;font-size:0.9rem;font-family:inherit;resize:vertical;outline:none;"
+          placeholder="Ex: Pedido de viagem 18,6 km 6 min 2,4 km R$ 0,8/km ~2,4 km R$ 20 Timóteo 4.72 (611) Drogaria Riachuelo Tarumã">${StorageService.escaparHTML(textoInicial)}</textarea>
+      </div>
+    `;
+
+    const texto = await Sheet.abrir({
+      icone: '📋',
+      titulo: 'Ler oferta do inDrive / Print',
+      subtitulo: 'Cole o texto copiado do print (Google Lens / Selecionar texto da tela) para extrair valor, busca, KM, avaliações e bairro automaticamente:',
+      corpoHTML,
+      textoOk: 'Extrair e Calcular',
+      variante: 'green',
+      coletar: () => {
+        const val = document.getElementById('sheetTextoInDrive')?.value || '';
+        return val.trim() ? val.trim() : undefined;
+      },
+      aoAbrir: () => {
+        document.getElementById('sheetTextoInDrive')?.focus();
+      }
+    });
+
+    if (!texto) return;
+    this.extrairDadosTextoInDrive(texto);
+  },
+
+  extrairDadosTextoInDrive(texto) {
+    const t = String(texto || '');
+    const parseNum = s => parseFloat(String(s).replace(',', '.')) || 0;
+
+    // 1. Extrai valores em R$ (ignora R$/km e contrapropostas maiores se houver "Aceitar por R$ X")
+    let valorOferta = 0;
+    const matchAceitar = t.match(/Aceitar\s+por\s+R\$\s*(\d+(?:[.,]\d+)?)/i);
+    if (matchAceitar) {
+      valorOferta = parseNum(matchAceitar[1]);
+    } else {
+      const todosReais = [...t.matchAll(/R\$\s*(\d+(?:[.,]\d+)?)(?!\s*\/\s*km)/gi)].map(m => parseNum(m[1]));
+      if (todosReais.length > 0) valorOferta = todosReais[0];
+    }
+
+    // 2. Extrai KM de busca (~2,4 km) e KM da corrida (18,6 km)
+    let kmBusca = 0;
+    const matchBuscaTil = t.match(/~\s*(\d+(?:[.,]\d+)?)\s*km/i);
+    if (matchBuscaTil) kmBusca = parseNum(matchBuscaTil[1]);
+
+    const todosKms = [...t.matchAll(/(\d+(?:[.,]\d+)?)\s*km/gi)]
+      .map(m => parseNum(m[1]))
+      .filter(v => v > 0);
+
+    let kmCorrida = 0;
+    if (todosKms.length > 0) {
+      const maiorKm = Math.max(...todosKms);
+      const menorKm = Math.min(...todosKms);
+      if (kmBusca === 0 && todosKms.length >= 2 && menorKm < maiorKm) {
+        kmBusca = menorKm;
+      }
+      kmCorrida = maiorKm;
+    }
+
+    // 3. Extrai minutos (ignora "1 min." de tempo do pedido quando houver balões de rota)
+    const todosMin = [...t.matchAll(/(\d+)\s*min(?!\.)/gi)].map(m => parseInt(m[1], 10));
+    const minTotal = todosMin.length > 0 ? todosMin.reduce((a, b) => a + b, 0) : 0;
+
+    // 4. Extrai número de avaliações: ex: 4.72 (611) ou 5.0 (11)
+    let avaliacoes = 0;
+    const matchAval = t.match(/\d+[.,]\d+\s*\((\d+)\)/);
+    if (matchAval) avaliacoes = parseInt(matchAval[1], 10) || 0;
+
+    // 5. Detecta bairro de Manaus no texto
+    const bairrosConhecidos = [
+      'Tarumã', 'Nova Cidade', 'Puraquequara', 'Santa Etelvina', 'Lago Azul',
+      'Viver Melhor', 'Colônia Antônio Aleixo', 'Distrito', 'Cidade Nova',
+      'Ponta Negra', 'Jorge Teixeira', 'Zumbi', 'Compensa', 'Centro', 'Vieiralves', 'Adrianópolis'
+    ];
+    const bairroEncontrado = bairrosConhecidos.find(b =>
+      t.toLowerCase().includes(b.toLowerCase())
+    ) || '';
+
+    if (valorOferta > 0) document.getElementById('simValor').value = valorOferta;
+    if (kmBusca > 0) document.getElementById('simKmBusca').value = kmBusca;
+    if (kmCorrida > 0) document.getElementById('simKm').value = kmCorrida;
+    document.getElementById('simMin').value = minTotal > 6 ? minTotal : '';
+    if (avaliacoes > 0) document.getElementById('simAvaliacoes').value = avaliacoes;
+    if (bairroEncontrado) document.getElementById('simBairro').value = bairroEncontrado;
+
+    this.simularCorrida(true);
+    this.notificar('✅ Dados da tela do inDrive extraídos!');
+  },
+
+  simularCorrida(forcarVoz = false) {
     const valor = this.lerNumero('simValor');
-    const km = this.lerNumero('simKm');
-    const min = this.lerNumero('simMin');
+    const kmBusca = this.lerNumero('simKmBusca');
+    const kmCorrida = this.lerNumero('simKm');
+    const kmTotal = kmBusca + kmCorrida;
+    const minInformado = this.lerNumero('simMin');
+    const avaliacoes = Math.round(this.lerNumero('simAvaliacoes'));
+    const bairroBruto = (document.getElementById('simBairro')?.value || '').trim();
     const out = document.getElementById('resultadoSimulador');
     if (!out) return;
 
-    if (valor <= 0 || km <= 0) {
-      out.innerHTML = 'Digite o valor da oferta (R$) e os KMs totais (incluindo buscar o passageiro).';
+    if (valor <= 0 || kmTotal <= 0) {
+      out.innerHTML = 'Digite a oferta (R$), KM de busca e KM da corrida (ou toque em <b>📋 Ler Texto</b>) para ver o lucro real e a contraproposta ideal.';
       return;
     }
 
+    // Se o balão verde de minutos estiver cortado no inDrive, estima a ~1.65 min/km urbano
+    const min = minInformado > 0 ? minInformado : Math.max(5, Math.round(kmTotal * 1.65));
+    const tempoEstimado = minInformado <= 0;
+
+    // Filtro de bairros de periferia / volta vazia (Manaus)
+    const bairrosVoltaVazia = [
+      'taruma', 'tarumã', 'nova cidade', 'puraquequara', 'santa etelvina',
+      'lago azul', 'viver melhor', 'colonia antonio aleixo', 'colônia antônio aleixo',
+      'distrito', 'br-174', 'am-010', 'barreira', 'ramal'
+    ];
+    const bairroNorm = bairroBruto.toLowerCase();
+    const temVoltaVazia = bairrosVoltaVazia.some(b => bairroNorm.includes(b));
+
     const custoKmManut = StorageService.obterNumero(KEYS.CUSTO_KM, DEFAULTS.CUSTO_KM);
     const kml = StorageService.obterNumero(KEYS.CONSUMO_KML, 10);
-    const precoLitro = StorageService.obterNumero(KEYS.PRECO_LITRO, 5.80);
-    const custoCombKm = kml > 0 ? (precoLitro / kml) : 0.55;
+    const precoLitro = StorageService.obterNumero(KEYS.PRECO_LITRO, 6.50);
+    const custoCombKm = kml > 0 ? (precoLitro / kml) : 0.65;
+    const custoOperacionalKm = custoKmManut + custoCombKm;
 
-    const custoTotalCorrida = km * (custoKmManut + custoCombKm);
+    const custoCombustivel = kmTotal * custoCombKm;
+    const custoManutencao = kmTotal * custoKmManut;
+    const custoTotalCorrida = kmTotal * custoOperacionalKm;
     const lucroCorrida = valor - custoTotalCorrida;
-    const reaisPorKmBruto = valor / km;
-    const reaisPorKmLiq = lucroCorrida / km;
-    const ganhoHoraLiq = min > 0 ? (lucroCorrida / (min / 60)) : 0;
 
-    let veredito = '🟢 <b>VALE A PENA ACEITAR!</b>';
+    const reaisPorKmBruto = valor / kmTotal;
+    const reaisPorKmLiq = lucroCorrida / kmTotal;
+    const ganhoHoraBruto = (valor / (min / 60));
+    const ganhoHoraLiq = (lucroCorrida / (min / 60));
+
+    // Cálculo de Contraproposta na Canetinha (✏️) do inDrive:
+    // Meta padrão: R$ 1,50/km bruto (ou R$ 1,80/km se tiver volta vazia) e pelo menos R$ 1,00/km líquido
+    const metaKmBrutoAlvo = temVoltaVazia ? 1.80 : 1.50;
+    const contraMinima = Math.ceil(Math.max(
+      kmTotal * metaKmBrutoAlvo,
+      custoTotalCorrida + (kmTotal * (temVoltaVazia ? 1.15 : 0.95))
+    ));
+    const contraBoa = Math.ceil(kmTotal * (temVoltaVazia ? 2.15 : 1.85));
+
+    // Alertas inteligentes
+    const alertas = [];
+    if (temVoltaVazia) {
+      alertas.push(`⚠️ <b>Volta Vazia (${StorageService.escaparHTML(bairroBruto)}):</b> destino afastado; exija contraproposta maior para cobrir o retorno.`);
+    }
+    if (kmBusca >= 2.5) {
+      alertas.push(`📍 <b>Busca longa (${FinanceEngine.numeroBR(kmBusca, 1)} km):</b> deslocamento alto até o passageiro.`);
+    }
+    if (avaliacoes > 0 && avaliacoes < 25) {
+      alertas.push(`👤 <b>Passageiro novato (${avaliacoes} aval.):</b> poucas corridas no histórico; redobre a atenção.`);
+    }
+
+    let veredito = '🟢 <b>BOA! VALE A PENA ACEITAR</b>';
+    let vereditoVoz = 'Corrida boa';
     let cor = 'var(--uber-green)';
-    if (reaisPorKmLiq < 0.85 || (min > 0 && ganhoHoraLiq < 22)) {
-      veredito = '🔴 <b>RECUSAR (Margem baixa / Prejuízo)</b>';
+
+    const minLiqKmAceitavel = temVoltaVazia ? 1.10 : 0.90;
+    const minLiqKmBom = temVoltaVazia ? 1.50 : 1.30;
+
+    if (reaisPorKmLiq < minLiqKmAceitavel || ganhoHoraLiq < 22) {
+      veredito = '🔴 <b>RUIM (Recusar ou Contrapropor)</b>';
+      vereditoVoz = 'Corrida ruim';
       cor = 'var(--uber-red)';
-    } else if (reaisPorKmLiq < 1.30 || (min > 0 && ganhoHoraLiq < 32)) {
-      veredito = '🟡 <b>CORRIDA MÉDIA (Avalie o destino)</b>';
+    } else if (reaisPorKmLiq < minLiqKmBom || ganhoHoraLiq < 32) {
+      veredito = '🟡 <b>REGULAR (Peça Contraproposta)</b>';
+      vereditoVoz = 'Corrida regular';
       cor = 'var(--uber-yellow)';
     }
 
+    const htmlContraproposta = valor < contraMinima
+      ? `<div class="sim-counter-box">
+           ✏️ <b>Sugestão de Contraproposta (inDrive):</b><br>
+           Mínimo justo: <b class="text-yellow">${FinanceEngine.moedaCurta(contraMinima)}</b> (${FinanceEngine.moeda(metaKmBrutoAlvo)}/km) •
+           Ideal: <b class="text-green">${FinanceEngine.moedaCurta(contraBoa)}</b>
+         </div>`
+      : `<div class="sim-counter-box">
+           ✅ Oferta de <b>${FinanceEngine.moeda(valor)}</b> já bate a meta mínima (${FinanceEngine.moedaCurta(contraMinima)}).
+         </div>`;
+
+    const htmlAlertas = alertas.length > 0
+      ? `<div class="sim-alert-list">${alertas.map(a => `<div class="sim-alert-item">${a}</div>`).join('')}</div>`
+      : '';
+
     out.innerHTML = `
       <div class="sim-verdict-box" style="border-left-color:${cor};">
-        <div class="sim-verdict-title" style="color:${cor};">${veredito}</div>
+        <div class="sim-verdict-title" style="color:${cor};">
+          <span>${veredito}</span>
+          <button type="button" class="chip-btn" onclick="UIController.simularCorrida(true)" title="Ouvir análise em voz alta">🔊 Ouvir</button>
+        </div>
         <div class="sim-verdict-main">
-          Lucro Livre: ${FinanceEngine.moeda(lucroCorrida)} • Líq: ${FinanceEngine.moeda(reaisPorKmLiq)}/km
-          ${min > 0 ? ` • ${FinanceEngine.moedaCurta(ganhoHoraLiq)}/h` : ''}
+          Sobra Livre: <span style="color:${cor}">${FinanceEngine.moeda(lucroCorrida)}</span> •
+          Líq: ${FinanceEngine.moeda(reaisPorKmLiq)}/km •
+          ${FinanceEngine.moedaCurta(ganhoHoraLiq)}/h
         </div>
         <div class="sim-verdict-sub">
-          Bruto: ${FinanceEngine.moeda(reaisPorKmBruto)}/km • Custo estimado da corrida: ${FinanceEngine.moeda(custoTotalCorrida)}
+          <b>R$/km Real: ${FinanceEngine.moeda(reaisPorKmBruto)}/km</b> (${FinanceEngine.numeroBR(kmTotal, 1)} km total • ${tempoEstimado ? `~${min} min est.` : `${min} min`})<br>
+          Combustível: ${FinanceEngine.moeda(custoCombustivel)} + Manut.: ${FinanceEngine.moeda(custoManutencao)} (Bruto/h: ~${FinanceEngine.moedaCurta(ganhoHoraBruto)}/h)
         </div>
+        ${htmlContraproposta}
+        ${htmlAlertas}
       </div>
     `;
+
+    const centavosOuReais = FinanceEngine.numeroBR(reaisPorKmBruto, 2);
+    const fala = `${vereditoVoz}. ${centavosOuReais} por quilômetro real. Sobra livre de ${Math.round(lucroCorrida)} reais. ` +
+      (valor < contraMinima ? `Contraproposta mínima: ${contraMinima} reais.` : 'Pode aceitar.');
+    this.falarVereditoSimulador(fala, forcarVoz);
   },
 
   async configurarTrocaOleo() {
@@ -2091,10 +2306,11 @@ const UIController = {
     const alvo = turnos.find(t => String(t.id) === String(id));
     if (!alvo) return;
 
+    const dataSegura = StorageService.escaparHTML(alvo.data);
     const ok = await Sheet.confirmar({
       icone: '🗑️',
       titulo: 'Excluir este turno?',
-      subtitulo: `${alvo.data} • ${alvo.kmTotal} km • Lucro <b>${FinanceEngine.moeda(alvo.lucroLiquido)}</b><br>Se errar, dá pra desfazer em <b>Pontos de restauração</b>.`,
+      subtitulo: `${dataSegura} • ${Number(alvo.kmTotal) || 0} km • Lucro <b>${FinanceEngine.moeda(alvo.lucroLiquido)}</b><br>Se errar, dá pra desfazer em <b>Pontos de restauração</b>.`,
       textoOk: 'Excluir turno',
       variante: 'danger'
     });
@@ -2114,10 +2330,27 @@ const UIController = {
       icone: '⚠️',
       titulo: 'Apagar todo o histórico?',
       subtitulo: `Os <b>${total} turno(s)</b> serão apagados deste celular. Uma cópia fica guardada em <b>Pontos de restauração</b>, mas o ideal é salvar um backup antes.`,
-      textoOk: 'Apagar tudo',
+      textoOk: 'Continuar',
       variante: 'danger'
     });
     if (!ok) return;
+
+    // Trava dupla contra exclusão acidental no suporte veicular: exige digitar a quantidade de turnos
+    const confirmacaoQtd = await Sheet.pedirValor({
+      icone: '🔒',
+      titulo: 'Confirmação de segurança',
+      subtitulo: `Para confirmar a exclusão permanente, digite o número total de turnos (<b>${total}</b>):`,
+      placeholder: String(total),
+      inteiro: true,
+      textoOk: 'Confirmar e apagar tudo',
+      variante: 'danger'
+    });
+    if (confirmacaoQtd !== total) {
+      if (confirmacaoQtd !== null) {
+        this.notificar('Número incorreto. Exclusão cancelada por segurança.');
+      }
+      return;
+    }
 
     await Cofre.criarPonto(`Antes de apagar todo o histórico (${total} turnos)`);
     StorageService.salvarTurnos([]);
@@ -2134,8 +2367,8 @@ const UIController = {
     }
 
     const celulaSegura = (val) => {
-      const str = String(val ?? '').replace(/;/g, ',').replace(/[\r\n]+/g, ' ').trim();
-      return /^[=+\-@]/.test(str) ? `'${str}` : str;
+      const str = String(val ?? '').replace(/;/g, ',').replace(/[\r\n\t]+/g, ' ').trim();
+      return /^[\s=+\-@|%!]/.test(str) ? `'${str}` : str;
     };
 
     const cols = [
@@ -2195,7 +2428,7 @@ const UIController = {
     }
 
     const textoUltimoBackup = infoBackup
-      ? infoBackup.dataFormatada
+      ? StorageService.escaparHTML(infoBackup.dataFormatada)
       : 'Pendente';
 
     const elInfo = document.getElementById('infoSegurancaDados');
@@ -2254,26 +2487,38 @@ const UIController = {
 
   async exportarBackupJSON() {
     const turnos = StorageService.obterTurnos();
-    if (turnos.length === 0) {
+    const turnoAtivo = StorageService.obterTurnoAtivo();
+    if (turnos.length === 0 && !turnoAtivo) {
       this.notificar('Nenhum turno salvo para fazer backup.');
       return;
     }
 
+    const configuracoes = {
+      metaDiaria: StorageService.obterNumero(KEYS.META_DIARIA, DEFAULTS.META_DIARIA),
+      metaSemanal: StorageService.obterNumero(KEYS.META_SEMANAL, DEFAULTS.META_SEMANAL),
+      metaMensal: StorageService.obterNumero(KEYS.META_MENSAL, DEFAULTS.META_MENSAL),
+      custoKm: StorageService.obterNumero(KEYS.CUSTO_KM, DEFAULTS.CUSTO_KM),
+      consumoKmL: StorageService.obterNumero(KEYS.CONSUMO_KML, 0),
+      precoLitro: StorageService.obterNumero(KEYS.PRECO_LITRO, 0),
+      kmProxOleo: StorageService.obterNumero(KEYS.KM_PROX_OLEO, 0),
+      custoFixoMes: StorageService.obterNumero(KEYS.CUSTO_FIXO_MES, 0),
+      baixaManut: StorageService.obterNumero(KEYS.BAIXA_MANUT, 0)
+    };
+
+    const integridadeSHA256 = await StorageService.calcularHashSHA256({
+      versao: 5,
+      configuracoes,
+      turnoAtivo: turnoAtivo || null,
+      turnos
+    });
+
     const pacote = {
       app: 'meu-turno',
-      versao: 4,
+      versao: 5,
       exportadoEm: new Date().toISOString(),
-      configuracoes: {
-        metaDiaria: StorageService.obterNumero(KEYS.META_DIARIA, DEFAULTS.META_DIARIA),
-        metaSemanal: StorageService.obterNumero(KEYS.META_SEMANAL, DEFAULTS.META_SEMANAL),
-        metaMensal: StorageService.obterNumero(KEYS.META_MENSAL, DEFAULTS.META_MENSAL),
-        custoKm: StorageService.obterNumero(KEYS.CUSTO_KM, DEFAULTS.CUSTO_KM),
-        consumoKmL: StorageService.obterNumero(KEYS.CONSUMO_KML, 0),
-        precoLitro: StorageService.obterNumero(KEYS.PRECO_LITRO, 0),
-        kmProxOleo: StorageService.obterNumero(KEYS.KM_PROX_OLEO, 0),
-        custoFixoMes: StorageService.obterNumero(KEYS.CUSTO_FIXO_MES, 0),
-        baixaManut: StorageService.obterNumero(KEYS.BAIXA_MANUT, 0)
-      },
+      integridadeSHA256,
+      configuracoes,
+      turnoAtivo: turnoAtivo || null,
       turnos
     };
 
@@ -2322,17 +2567,41 @@ const UIController = {
       const listaImportada = Array.isArray(listaBruta)
         ? listaBruta.slice(0, 5000).map((t, idx) => StorageService.sanitizarTurno(t, idx)).filter(Boolean)
         : [];
+      const ativoImportado = (!Array.isArray(dados) && dados && dados.turnoAtivo)
+        ? StorageService.sanitizarTurnoAtivo(dados.turnoAtivo)
+        : null;
 
-      if (listaImportada.length === 0) {
+      if (listaImportada.length === 0 && !ativoImportado) {
         this.notificar('Arquivo inválido ou sem turnos.');
         return;
+      }
+
+      // Verifica assinatura de integridade SHA-256 quando presente no pacote
+      if (!Array.isArray(dados) && typeof dados.integridadeSHA256 === 'string' && dados.integridadeSHA256) {
+        const hashCalculado = await StorageService.calcularHashSHA256({
+          versao: dados.versao || 5,
+          configuracoes: dados.configuracoes || {},
+          turnoAtivo: dados.turnoAtivo || null,
+          turnos: Array.isArray(dados.turnos) ? dados.turnos : []
+        });
+        if (hashCalculado !== dados.integridadeSHA256) {
+          const prosseguirAdulterado = await Sheet.confirmar({
+            icone: '🚨',
+            titulo: 'Aviso de Integridade',
+            subtitulo: 'O arquivo de backup foi <b>modificado manualmente ou corrompido</b> fora do aplicativo (assinatura SHA-256 divergente). Deseja restaurar mesmo assim com sanitização de segurança?',
+            textoOk: 'Restaurar mesmo assim',
+            textoCancelar: 'Cancelar importação',
+            variante: 'danger'
+          });
+          if (!prosseguirAdulterado) return;
+        }
       }
 
       const atuais = StorageService.obterTurnos();
       const ok = await Sheet.confirmar({
         icone: '📥',
         titulo: 'Restaurar Backup',
-        subtitulo: `O arquivo contém <b>${listaImportada.length} turno(s)</b>. Eles serão mesclados com seus <b>${atuais.length} turno(s)</b> atuais sem duplicar registros.`,
+        subtitulo: `O arquivo contém <b>${listaImportada.length} turno(s)</b>${ativoImportado ? ' + <b>1 turno em andamento</b>' : ''}. Eles serão mesclados com seus <b>${atuais.length} turno(s)</b> atuais sem duplicar registros.`,
         textoOk: 'Restaurar agora',
         variante: 'green'
       });
@@ -2351,6 +2620,10 @@ const UIController = {
         (a, b) => this.parseData(b).getTime() - this.parseData(a).getTime()
       );
       StorageService.salvarTurnos(mesclados);
+
+      if (ativoImportado && !StorageService.obterTurnoAtivo()) {
+        StorageService.salvarTurnoAtivo(ativoImportado);
+      }
 
       if (dados.configuracoes && typeof dados.configuracoes === 'object') {
         const cfg = dados.configuracoes;

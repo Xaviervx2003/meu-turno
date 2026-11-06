@@ -1105,25 +1105,58 @@ input::placeholder {
   margin-bottom: 0;
 }
 
+.sim-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .sim-verdict-box {
-  padding: 10px 12px;
+  padding: 12px;
   border-radius: 10px;
   background: var(--uber-surface-elevated);
   border-left: 4px solid var(--uber-green);
-  margin-top: 4px;
+  margin-top: 6px;
 }
 .sim-verdict-title {
   font-size: var(--fs-md);
   margin-bottom: var(--space-1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
 }
 .sim-verdict-main {
   color: var(--uber-white);
-  font-weight: 700;
+  font-weight: 800;
+  font-size: 0.94rem;
 }
 .sim-verdict-sub {
   font-size: var(--fs-sm);
   color: var(--uber-muted);
-  margin-top: 2px;
+  margin-top: 4px;
+}
+.sim-counter-box {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--uber-black);
+  border: 1px solid var(--uber-border);
+  font-size: 0.78rem;
+  color: var(--uber-white);
+}
+.sim-alert-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.75rem;
+}
+.sim-alert-item {
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: rgba(255, 192, 67, 0.12);
+  color: var(--uber-yellow);
+  font-weight: 700;
 }
 
 /* ==========================================================================

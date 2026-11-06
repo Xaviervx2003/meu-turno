@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; form-action 'none'; object-src 'none'; base-uri 'self';">
   <meta name="referrer" content="no-referrer">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#000000">
@@ -14,7 +14,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
-  <link rel="stylesheet" href="./css/styles.css?v=18">
+  <link rel="stylesheet" href="./css/styles.css?v=19">
   <title>Meu Turno — Driver</title>
 </head>
 <body>
@@ -153,27 +153,55 @@
 
       <div id="infoManutencaoFixo" class="text-helper"></div>
 
-      <!-- Simulador Rápido: "Vale a Pena Essa Corrida?" -->
+      <!-- Simulador Rápido: "Vale a Pena Essa Corrida? (inDrive / Uber / 99)" -->
       <div id="painelSimuladorCorrida" class="collapsible-panel panel-bottom">
         <div class="card-header-row compact">
-          <strong class="text-white">🚦 Avaliador Rápido de Oferta (Uber / 99)</strong>
+          <strong class="text-white">🚦 Leitor de Oferta (inDrive / Uber / 99)</strong>
+          <div class="sim-top-actions">
+            <button type="button" class="chip-btn" onclick="UIController.colarTextoOfertaInDrive()" title="Colar texto copiado de print/tela do inDrive">📋 Ler Texto</button>
+            <button id="btnVozSimulador" type="button" class="chip-btn" aria-pressed="false" onclick="UIController.alternarVozSimulador()" title="Ativar/desativar aviso por voz">🔇 Voz</button>
+          </div>
         </div>
+
         <div class="grid-3">
           <div>
-            <label for="simValor">Valor (R$)</label>
-            <input type="number" id="simValor" step="0.5" inputmode="decimal" enterkeyhint="next" placeholder="Ex: 18" oninput="UIController.simularCorrida()">
+            <label for="simValor">Oferta (R$)</label>
+            <input type="number" id="simValor" step="0.5" inputmode="decimal" enterkeyhint="next" placeholder="Ex: 20" oninput="UIController.simularCorrida()">
           </div>
           <div>
-            <label for="simKm">KM c/ Busca</label>
-            <input type="number" id="simKm" step="0.5" inputmode="decimal" enterkeyhint="next" placeholder="Ex: 9.5" oninput="UIController.simularCorrida()">
+            <label for="simKmBusca">KM Busca</label>
+            <input type="number" id="simKmBusca" step="0.1" inputmode="decimal" enterkeyhint="next" placeholder="Ex: 2.4" oninput="UIController.simularCorrida()">
           </div>
           <div>
-            <label for="simMin">Tempo (min)</label>
-            <input type="number" id="simMin" inputmode="numeric" enterkeyhint="done" placeholder="Ex: 20" oninput="UIController.simularCorrida()">
+            <label for="simKm">KM Corrida</label>
+            <input type="number" id="simKm" step="0.1" inputmode="decimal" enterkeyhint="next" placeholder="Ex: 18.6" oninput="UIController.simularCorrida()">
           </div>
         </div>
+
+        <div class="grid-3">
+          <div>
+            <label for="simMin">Min. Totais</label>
+            <input type="number" id="simMin" inputmode="numeric" enterkeyhint="next" placeholder="Auto se vazio" oninput="UIController.simularCorrida()">
+          </div>
+          <div>
+            <label for="simAvaliacoes">Nº Avaliações</label>
+            <input type="number" id="simAvaliacoes" inputmode="numeric" enterkeyhint="next" placeholder="Ex: 11 ou 611" oninput="UIController.simularCorrida()">
+          </div>
+          <div>
+            <label for="simBairro">Destino (B)</label>
+            <input type="text" id="simBairro" maxlength="40" enterkeyhint="done" placeholder="Ex: Tarumã" oninput="UIController.simularCorrida()">
+          </div>
+        </div>
+
+        <div class="shift-tags-row" role="group" aria-label="Atalhos de destino em Manaus">
+          <button type="button" class="tag-pill" onclick="UIController.selecionarBairroSimulador('Tarumã')">⚠️ Tarumã</button>
+          <button type="button" class="tag-pill" onclick="UIController.selecionarBairroSimulador('Nova Cidade')">⚠️ Nova Cidade</button>
+          <button type="button" class="tag-pill" onclick="UIController.selecionarBairroSimulador('Puraquequara')">⚠️ Puraquequara</button>
+          <button type="button" class="tag-pill" onclick="UIController.selecionarBairroSimulador('Centro')">✅ Centro/Sul</button>
+        </div>
+
         <div id="resultadoSimulador" class="text-helper" aria-live="polite">
-          Digite o valor e os KMs totais da chamada para ver o lucro real.
+          Digite a oferta (R$), KM de busca e KM da corrida (ou toque em <b>📋 Ler Texto</b>) para ver o lucro real e a contraproposta ideal do inDrive.
         </div>
       </div>
     </div>
@@ -433,10 +461,10 @@
 <div id="toast" class="uber-toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <!-- MÓDULOS JAVASCRIPT DO APP -->
-<script src="./js/storage.js?v=18"></script>
-<script src="./js/calendar.js?v=18"></script>
-<script src="./js/finance.js?v=18"></script>
-<script src="./js/sheet.js?v=18"></script>
-<script src="./js/ui.js?v=18"></script>
+<script src="./js/storage.js?v=19"></script>
+<script src="./js/calendar.js?v=19"></script>
+<script src="./js/finance.js?v=19"></script>
+<script src="./js/sheet.js?v=19"></script>
+<script src="./js/ui.js?v=19"></script>
 </body>
 </html>

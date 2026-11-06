@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meu-turno-v18';
+const CACHE_NAME = 'meu-turno-v19';
 const ASSETS = [
   './',
   './index.html',
@@ -32,18 +32,24 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Estratégia Network-First com fallback para Cache Offline:
-// Quando online, traz sempre o layout mais novo imediatamente; sem sinal, abre 100% offline.
+// Estratégia Network-First com fallback para Cache Offline e proteção contra Cache Poisoning/Bloat:
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-  if (!event.request.url.startsWith(self.location.origin)) return;
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
 
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200) {
+        if (
+          networkResponse &&
+          networkResponse.status === 200 &&
+          networkResponse.type === 'basic'
+        ) {
           const clone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          // Normaliza a chave de cache sem query strings arbitrárias para evitar Cache Bloat
+          const chaveCache = new Request(url.origin + url.pathname, { method: 'GET' });
+          caches.open(CACHE_NAME).then((cache) => cache.put(chaveCache, clone));
         }
         return networkResponse;
       })

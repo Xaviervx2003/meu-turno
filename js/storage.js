@@ -35,11 +35,37 @@ const StorageService = {
       .replace(/'/g, '&#39;');
   },
 
+  async calcularHashSHA256( payloadObj ) {
+    const str = JSON.stringify(payloadObj);
+    try {
+      if (window.crypto && window.crypto.subtle) {
+        const bytes = new TextEncoder().encode(str);
+        const buf = await window.crypto.subtle.digest('SHA-256', bytes);
+        return Array.from(new Uint8Array(buf))
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('');
+      }
+    } catch {}
+    // Fallback determinístico FNV-1a 64-bit hex caso executado fora de contexto HTTPS/localhost
+    let h1 = 0xdeadbeef ^ str.length;
+    let h2 = 0x41c6ce57 ^ str.length;
+    for (let i = 0; i < str.length; i++) {
+      const ch = str.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761);
+      h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return 'fnv1a-' + (h2 >>> 0).toString(16).padStart(8, '0') + (h1 >>> 0).toString(16).padStart(8, '0');
+  },
+
   sanitizarTurno(t, idx = 0) {
-    if (!t || typeof t !== 'object') return null;
-    const num = (v, dec = 2) => {
+    if (!t || typeof t !== 'object' || Array.isArray(t)) return null;
+    const num = (v, dec = 2, min = -1000000, max = 1000000) => {
       const n = parseFloat(v);
-      return Number.isFinite(n) ? Number(n.toFixed(dec)) : 0;
+      if (!Number.isFinite(n)) return 0;
+      const clamped = Math.min(max, Math.max(min, n));
+      return Number(clamped.toFixed(dec));
     };
     const idBruto = t.id ? String(t.id) : `legacy_${idx}_${t.data || ''}`;
     const idLimpo = idBruto.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 48) || `legacy_${idx}`;
@@ -50,31 +76,31 @@ const StorageService = {
       : [];
     const obsLimpa = String(t.obs || '').trim().slice(0, 60);
 
+    // Schema estrito por allowlist (sem spread ...t para impedir Prototype Pollution e chaves maliciosas)
     return {
-      ...t,
       id: idLimpo,
       data: dataLimpa || new Date().toLocaleDateString('pt-BR'),
       dataISO: dataISOLimpa,
-      kmInicial: num(t.kmInicial, 1),
-      kmFinal: num(t.kmFinal, 1),
-      kmTotal: Math.max(0, num(t.kmTotal, 1)),
-      horas: Math.max(0, num(t.horas, 1)),
-      corridas: Math.max(0, Math.round(num(t.corridas, 0))),
-      ganhoUber: Math.max(0, num(t.ganhoUber, 2)),
-      ganho99: Math.max(0, num(t.ganho99, 2)),
-      ganhoOutros: Math.max(0, num(t.ganhoOutros, 2)),
-      faturamento: Math.max(0, num(t.faturamento, 2)),
-      custosTotais: Math.max(0, num(t.custosTotais, 2)),
-      combustivel: Math.max(0, num(t.combustivel, 2)),
-      alimentacao: Math.max(0, num(t.alimentacao, 2)),
-      diariaCarro: Math.max(0, num(t.diariaCarro, 2)),
-      outrosGastos: Math.max(0, num(t.outrosGastos, 2)),
-      provisaoManut: Math.max(0, num(t.provisaoManut, 2)),
-      lucroLiquido: num(t.lucroLiquido, 2).toFixed(2),
-      brutoKm: num(t.brutoKm, 2).toFixed(2),
-      liquidoKm: num(t.liquidoKm, 2).toFixed(2),
-      liquidoHora: num(t.liquidoHora, 2).toFixed(2),
-      ticketMedio: num(t.ticketMedio, 2).toFixed(2),
+      kmInicial: num(t.kmInicial, 1, 0, 9999999),
+      kmFinal: num(t.kmFinal, 1, 0, 9999999),
+      kmTotal: num(t.kmTotal, 1, 0, 100000),
+      horas: num(t.horas, 1, 0, 24),
+      corridas: Math.round(num(t.corridas, 0, 0, 1000)),
+      ganhoUber: num(t.ganhoUber, 2, 0, 1000000),
+      ganho99: num(t.ganho99, 2, 0, 1000000),
+      ganhoOutros: num(t.ganhoOutros, 2, 0, 1000000),
+      faturamento: num(t.faturamento, 2, 0, 1000000),
+      custosTotais: num(t.custosTotais, 2, 0, 1000000),
+      combustivel: num(t.combustivel, 2, 0, 1000000),
+      alimentacao: num(t.alimentacao, 2, 0, 1000000),
+      diariaCarro: num(t.diariaCarro, 2, 0, 1000000),
+      outrosGastos: num(t.outrosGastos, 2, 0, 1000000),
+      provisaoManut: num(t.provisaoManut, 2, 0, 1000000),
+      lucroLiquido: num(t.lucroLiquido, 2, -1000000, 1000000).toFixed(2),
+      brutoKm: num(t.brutoKm, 2, 0, 100000).toFixed(2),
+      liquidoKm: num(t.liquidoKm, 2, -100000, 100000).toFixed(2),
+      liquidoHora: num(t.liquidoHora, 2, -100000, 100000).toFixed(2),
+      ticketMedio: num(t.ticketMedio, 2, 0, 100000).toFixed(2),
       tags: tagsLimpas,
       obs: obsLimpa
     };
@@ -105,10 +131,10 @@ const StorageService = {
     }
   },
   sanitizarTurnoAtivo(d) {
-    if (!d || typeof d !== 'object') return null;
-    const num = (v, dec = 2) => {
+    if (!d || typeof d !== 'object' || Array.isArray(d)) return null;
+    const num = (v, dec = 2, max = 1000000) => {
       const n = parseFloat(v);
-      return Number.isFinite(n) && n >= 0 ? Number(n.toFixed(dec)) : 0;
+      return Number.isFinite(n) && n >= 0 ? Number(Math.min(max, n).toFixed(dec)) : 0;
     };
     const inicioMs = parseInt(d.inicioMs, 10);
     if (!Number.isFinite(inicioMs) || inicioMs <= 0) return null;
@@ -118,14 +144,14 @@ const StorageService = {
     return {
       inicioMs,
       horaFormatada: String(d.horaFormatada || '').replace(/[^0-9:]/g, '').slice(0, 5) || '00:00',
-      kmInicial: num(d.kmInicial, 1),
+      kmInicial: num(d.kmInicial, 1, 9999999),
       pausadoEmMs: (Number.isFinite(pausadoEmMs) && pausadoEmMs > 0) ? pausadoEmMs : null,
       horaPausa: d.horaPausa ? String(d.horaPausa).replace(/[^0-9:]/g, '').slice(0, 5) : undefined,
-      totalPausaMs: Math.max(0, parseInt(d.totalPausaMs, 10) || 0),
-      faturamentoParcial: num(d.faturamentoParcial, 2),
-      combustivel: num(d.combustivel, 2),
-      alimentacao: num(d.alimentacao, 2),
-      outrosGastos: num(d.outrosGastos, 2)
+      totalPausaMs: Math.min(86400000 * 7, Math.max(0, parseInt(d.totalPausaMs, 10) || 0)),
+      faturamentoParcial: num(d.faturamentoParcial, 2, 1000000),
+      combustivel: num(d.combustivel, 2, 1000000),
+      alimentacao: num(d.alimentacao, 2, 1000000),
+      outrosGastos: num(d.outrosGastos, 2, 1000000)
     };
   },
 
@@ -220,18 +246,19 @@ const Cofre = {
     } catch {}
   },
 
+  CHAVES_CONFIG: [
+    KEYS.META_DIARIA, KEYS.META_SEMANAL, KEYS.META_MENSAL,
+    KEYS.CUSTO_KM, KEYS.CONSUMO_KML, KEYS.PRECO_LITRO,
+    KEYS.KM_PROX_OLEO, KEYS.CUSTO_FIXO_MES, KEYS.BAIXA_MANUT,
+    KEYS.ULTIMO_BACKUP, KEYS.MODO_PRIVACIDADE
+  ],
+
   async espelharConfigs() {
     const db = await this.abrirDB();
     if (!db) return;
     try {
-      const chavesConfig = [
-        KEYS.META_DIARIA, KEYS.META_SEMANAL, KEYS.META_MENSAL,
-        KEYS.CUSTO_KM, KEYS.CONSUMO_KML, KEYS.PRECO_LITRO,
-        KEYS.KM_PROX_OLEO, KEYS.CUSTO_FIXO_MES, KEYS.BAIXA_MANUT,
-        KEYS.ULTIMO_BACKUP, KEYS.MODO_PRIVACIDADE
-      ];
       const mapa = {};
-      chavesConfig.forEach(k => {
+      this.CHAVES_CONFIG.forEach(k => {
         const v = localStorage.getItem(k);
         if (v !== null) mapa[k] = v;
       });
@@ -263,10 +290,10 @@ const Cofre = {
         req.onerror = () => resolve(null);
       });
 
-      if (espelhoConfigs && typeof espelhoConfigs === 'object') {
+      if (espelhoConfigs && typeof espelhoConfigs === 'object' && !Array.isArray(espelhoConfigs)) {
         Object.entries(espelhoConfigs).forEach(([k, v]) => {
-          if (localStorage.getItem(k) === null && v !== undefined) {
-            localStorage.setItem(k, String(v));
+          if (this.CHAVES_CONFIG.includes(k) && localStorage.getItem(k) === null && v !== undefined && v !== null) {
+            localStorage.setItem(k, String(v).slice(0, 256));
           }
         });
       } else {
@@ -288,8 +315,14 @@ const Cofre = {
       }
 
       if (turnosLocal.length === 0 && Array.isArray(espelhoTurnos) && espelhoTurnos.length > 0) {
-        localStorage.setItem(KEYS.TURNOS, JSON.stringify(espelhoTurnos));
-        return espelhoTurnos.length;
+        const turnosSanitizados = espelhoTurnos
+          .slice(0, 5000)
+          .map((t, idx) => StorageService.sanitizarTurno(t, idx))
+          .filter(Boolean);
+        if (turnosSanitizados.length > 0) {
+          localStorage.setItem(KEYS.TURNOS, JSON.stringify(turnosSanitizados));
+          return turnosSanitizados.length;
+        }
       }
       if (turnosLocal.length > 0 && espelhoTurnos.length === 0) {
         await this.espelharTurnos(turnosLocal);
@@ -446,7 +479,20 @@ const StorageGuard = {
 
   obterInfoUltimoBackup() {
     try {
-      return JSON.parse(localStorage.getItem(KEYS.ULTIMO_BACKUP) || 'null');
+      const bruto = JSON.parse(localStorage.getItem(KEYS.ULTIMO_BACKUP) || 'null');
+      if (!bruto || typeof bruto !== 'object' || Array.isArray(bruto)) return null;
+      const timestamp = parseInt(bruto.timestamp, 10);
+      const qtdTurnos = Math.max(0, parseInt(bruto.qtdTurnos, 10) || 0);
+      const dataFormatada = String(bruto.dataFormatada || '')
+        .replace(/[^0-9/:\s,-]/g, '')
+        .trim()
+        .slice(0, 32);
+      if (!dataFormatada) return null;
+      return {
+        timestamp: Number.isFinite(timestamp) ? timestamp : 0,
+        dataFormatada,
+        qtdTurnos
+      };
     } catch {
       return null;
     }

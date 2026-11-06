@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="br.com.meuturno.indrive">
+
+    <!-- Permissão para Janela Flutuante (Semáforo 🟢🟡🔴 sobre o inDrive) -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:allowBackup="true"
+        android:label="Meu Turno — Leitor inDrive"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AppCompat.NoActionBar">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Serviço de Acessibilidade: Lê apenas os textos da oferta do inDrive (sem cliques automáticos) -->
+        <service
+            android:name=".InDriveAccessibilityService"
+            android:exported="true"
+            android:label="Meu Turno — Leitor de Corridas inDrive"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <!-- Serviço da Janela Flutuante (HUD Semáforo 🟢🟡🔴) -->
+        <service
+            android:name=".OverlayHudService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" />
+    </application>
+</manifest>

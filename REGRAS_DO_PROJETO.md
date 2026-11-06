@@ -172,3 +172,21 @@ Para **nunca ficar bagunçado** ou poluído visualmente, a interface segue rigor
 4. **Hardening na Importação de Backup JSON e Restauração de Pontos (`importarBackupArquivo` / `restaurarPonto`):**
    - Todas as configurações importadas (`dados.configuracoes`) passam por validação `Number.isFinite` com limites operacionais seguros (bloqueando `Infinity`, `NaN` ou valores extremos).
    - Na mesclagem de backup (`[...atuais, ...listaImportada]`), os registros já editados no aparelho atual têm prioridade sobre cópias antigas de mesmo `id`, e `restaurarPonto()` cria automaticamente um snapshot prévio no `Cofre` antes de reverter.
+
+---
+
+## 8. Hardening Avançado de Segurança e Integridade (`v19`)
+
+1. **Allowlist Estrita de Schema e Tetos Operacionais (`StorageService.sanitizarTurno` / `sanitizarTurnoAtivo`):**
+   - Removido o operador *spread* (`...t`) de objetos importados, adotando *allowlist* explícita de campos para eliminar riscos de *Prototype Pollution* e injeção de propriedades arbitrárias no `localStorage`/`IndexedDB`.
+   - Adicionados limites numéricos operacionais (`min`/`max`) em todos os campos financeiros, de odômetro e de tempo, impedindo ataques de *Numeric Overflow* (`1e308`) que corromperiam gráficos e KPIs.
+2. **Assinatura de Integridade SHA-256 (Web Crypto API) & Backup do `TurnoAtivo` (Pacote JSON v5):**
+   - `exportarBackupJSON()` inclui o `turnoAtivo` em andamento e gera um hash criptográfico **SHA-256** (`integridadeSHA256`) via `window.crypto.subtle.digest` (com fallback determinístico FNV-1a).
+   - `importarBackupArquivo()` verifica a assinatura SHA-256 antes de restaurar e exibe um alerta de segurança (`Sheet.confirmar`) caso o arquivo tenha sido adulterado ou corrompido fora do app.
+3. **Blindagem do `Cofre` (`IndexedDB`), `StorageGuard` e Anti-XSS Completo:**
+   - `Cofre.verificarAutoRecuperacao()` valida as chaves recuperadas contra a *allowlist* `Cofre.CHAVES_CONFIG` e higieniza integralmente `espelhoTurnos` via `StorageService.sanitizarTurno()` antes de gravar no `localStorage`.
+   - `StorageGuard.obterInfoUltimoBackup()` sanitiza `dataFormatada` e `qtdTurnos`, com escape HTML explícito em `UIController.renderizarSegurancaDados()` e `UIController.excluirTurno()`.
+4. **Trava Dupla Contra Exclusão Total & Proteção OWASP CSV / Service Worker / CSP:**
+   - `limparTodoHistorico()` exige confirmação em 2 etapas (incluindo digitação do número exato de turnos salvos) para impedir perda acidental de histórico com o celular no suporte veicular.
+   - `exportarCSV()` neutraliza vetores adicionais de *CSV Formula Injection* (`=`, `+`, `-`, `@`, `\t`, `\r`, `|`, `%`, `!`).
+   - `sw.js` (`meu-turno-v19`) restringe o cache dinâmico a respostas `basic` de mesma origem com normalização de URL (sem *query strings* arbitrárias), e a `Content-Security-Policy` inclui `worker-src 'self'`, `manifest-src 'self'` e `form-action 'none'`.
