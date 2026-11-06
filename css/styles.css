@@ -1159,6 +1159,83 @@ input::placeholder {
   font-weight: 700;
 }
 
+/* Bolha HUD Flutuante (Semáforo 🟢🟡🔴 Arrastável / Janela Compacta) */
+.floating-hud-bubble {
+  position: fixed;
+  top: 58px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 24px);
+  max-width: 410px;
+  background: rgba(14, 14, 14, 0.97);
+  backdrop-filter: blur(14px);
+  border: 2px solid var(--uber-green);
+  border-radius: 18px;
+  padding: 12px 14px;
+  z-index: 260;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.85);
+  touch-action: none;
+}
+.floating-hud-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  cursor: grab;
+  margin-bottom: 6px;
+}
+.floating-hud-status {
+  font-size: 0.92rem;
+  font-weight: 900;
+  color: var(--uber-green);
+}
+.floating-hud-controls {
+  display: flex;
+  gap: 6px;
+}
+.hud-mini-btn {
+  background: var(--uber-surface-elevated);
+  border: 1px solid var(--uber-border);
+  color: var(--uber-white);
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.floating-hud-metrics {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: var(--uber-white);
+  margin-bottom: 4px;
+}
+.floating-hud-counter {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--uber-yellow);
+  margin-bottom: 8px;
+}
+.floating-hud-quick-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+}
+.hud-step-btn {
+  min-height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--uber-border);
+  background: var(--uber-surface-elevated);
+  color: var(--uber-white);
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.hud-step-btn.accent {
+  background: var(--uber-blue);
+  border-color: var(--uber-blue);
+}
+
 /* ==========================================================================
    9. RECIBO DE FECHAMENTO, AGRUPAMENTO SEMANAL & HISTÓRICO PADRONIZADO
    ========================================================================== */

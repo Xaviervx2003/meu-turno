@@ -14,7 +14,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
-  <link rel="stylesheet" href="./css/styles.css?v=19">
+  <link rel="stylesheet" href="./css/styles.css?v=20">
   <title>Meu Turno — Driver</title>
 </head>
 <body>
@@ -156,9 +156,10 @@
       <!-- Simulador Rápido: "Vale a Pena Essa Corrida? (inDrive / Uber / 99)" -->
       <div id="painelSimuladorCorrida" class="collapsible-panel panel-bottom">
         <div class="card-header-row compact">
-          <strong class="text-white">🚦 Leitor de Oferta (inDrive / Uber / 99)</strong>
+          <strong class="text-white">🚦 Leitor inDrive / Uber / 99</strong>
           <div class="sim-top-actions">
-            <button type="button" class="chip-btn" onclick="UIController.colarTextoOfertaInDrive()" title="Colar texto copiado de print/tela do inDrive">📋 Ler Texto</button>
+            <button type="button" class="chip-btn chip-warning" onclick="UIController.abrirBolhaHud()" title="Abrir Bolha Flutuante de Semáforo 🟢🟡🔴">🫧 Abrir Bolha</button>
+            <button type="button" class="chip-btn" onclick="UIController.colarTextoOfertaInDrive()" title="Colar texto copiado de print/tela do inDrive">📋 Ler</button>
             <button id="btnVozSimulador" type="button" class="chip-btn" aria-pressed="false" onclick="UIController.alternarVozSimulador()" title="Ativar/desativar aviso por voz">🔇 Voz</button>
           </div>
         </div>
@@ -458,13 +459,33 @@
   </div>
 </div>
 
+<!-- BOLHA HUD FLUTUANTE (SEMÁFORO 🟢🟡🔴 ESTILO GIGU / INDRIVE) -->
+<div id="bolhaHudFlutuante" class="floating-hud-bubble hidden" role="region" aria-label="Bolha Leitor de Corridas">
+  <div id="bolhaHudHeader" class="floating-hud-header">
+    <span id="bolhaHudSemaforo" class="floating-hud-status">🟢 LEITOR INDRIVE</span>
+    <div class="floating-hud-controls">
+      <button type="button" class="hud-mini-btn" onclick="UIController.abrirJanelaFlutuantePiP()" title="Destacar em Janela Flutuante">🪟</button>
+      <button type="button" class="hud-mini-btn" onclick="UIController.fecharBolhaHud()" title="Fechar Bolha">✕</button>
+    </div>
+  </div>
+  <div id="bolhaHudMetricas" class="floating-hud-metrics">Toque nos botões abaixo ou cole o pedido</div>
+  <div id="bolhaHudContra" class="floating-hud-counter">✏️ Contraproposta aparece aqui</div>
+  <div class="floating-hud-quick-row">
+    <button type="button" class="hud-step-btn" onclick="UIController.ajustarRapidoBolha('valor', -2)">R$ -2</button>
+    <button type="button" class="hud-step-btn" onclick="UIController.ajustarRapidoBolha('valor', 2)">R$ +2</button>
+    <button type="button" class="hud-step-btn" onclick="UIController.ajustarRapidoBolha('km', -2)">KM -2</button>
+    <button type="button" class="hud-step-btn" onclick="UIController.ajustarRapidoBolha('km', 2)">KM +2</button>
+    <button type="button" class="hud-step-btn accent" onclick="UIController.colarDiretoNaBolha()">📋 Ler</button>
+  </div>
+</div>
+
 <div id="toast" class="uber-toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <!-- MÓDULOS JAVASCRIPT DO APP -->
-<script src="./js/storage.js?v=19"></script>
-<script src="./js/calendar.js?v=19"></script>
-<script src="./js/finance.js?v=19"></script>
-<script src="./js/sheet.js?v=19"></script>
-<script src="./js/ui.js?v=19"></script>
+<script src="./js/storage.js?v=20"></script>
+<script src="./js/calendar.js?v=20"></script>
+<script src="./js/finance.js?v=20"></script>
+<script src="./js/sheet.js?v=20"></script>
+<script src="./js/ui.js?v=20"></script>
 </body>
 </html>

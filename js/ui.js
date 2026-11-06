@@ -1627,6 +1627,114 @@ const UIController = {
   vozSimuladorAtiva: false,
   ultimoTextoFaladoSim: '',
   _timerVozSim: null,
+  _bolhaDragInit: false,
+
+  abrirBolhaHud() {
+    const bolha = document.getElementById('bolhaHudFlutuante');
+    if (!bolha) return;
+    bolha.classList.remove('hidden');
+
+    // Se ainda não digitou valores no simulador, carrega exemplo padrão (R$ 20 / 2.4km busca / 18.6km)
+    if (this.lerNumero('simValor') <= 0) {
+      document.getElementById('simValor').value = '20';
+      document.getElementById('simKmBusca').value = '2.4';
+      document.getElementById('simKm').value = '18.6';
+    }
+    this.inicializarArrasteBolha();
+    this.simularCorrida(false);
+    this.notificar('🫧 Bolha ativa! Arraste pelo topo ou use os botões rápidos.');
+  },
+
+  fecharBolhaHud() {
+    document.getElementById('bolhaHudFlutuante')?.classList.add('hidden');
+  },
+
+  ajustarRapidoBolha(tipo, delta) {
+    if (tipo === 'valor') {
+      const atual = this.lerNumero('simValor') || 15;
+      document.getElementById('simValor').value = Math.max(5, Number((atual + delta).toFixed(1)));
+    } else if (tipo === 'km') {
+      const atual = this.lerNumero('simKm') || 10;
+      document.getElementById('simKm').value = Math.max(1, Number((atual + delta).toFixed(1)));
+    }
+    this.simularCorrida(true);
+  },
+
+  async colarDiretoNaBolha() {
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        const txt = await navigator.clipboard.readText();
+        if (txt && txt.trim()) {
+          this.extrairDadosTextoInDrive(txt);
+          return;
+        }
+      }
+    } catch {}
+    this.colarTextoOfertaInDrive();
+  },
+
+  async abrirJanelaFlutuantePiP() {
+    if ('documentPictureInPicture' in window) {
+      try {
+        const pipWin = await window.documentPictureInPicture.requestWindow({ width: 360, height: 220 });
+        document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
+          pipWin.document.head.appendChild(link.cloneNode(true));
+        });
+        pipWin.document.body.style.background = '#000';
+        pipWin.document.body.style.padding = '8px';
+        const bolha = document.getElementById('bolhaHudFlutuante');
+        pipWin.document.body.appendChild(bolha);
+        pipWin.addEventListener('pagehide', () => {
+          document.body.appendChild(bolha);
+        });
+        return;
+      } catch {}
+    }
+
+    await Sheet.confirmar({
+      icone: '🫧',
+      titulo: 'Como deixar flutuando sobre o inDrive',
+      subtitulo:
+        'No Android (Samsung / Xiaomi / Motorola):<br>' +
+        '1. Toque no botão de <b>Apps Recentes (Quadrado / Gestos)</b> do celular.<br>' +
+        '2. Toque no <b>ícone do Meu Turno</b> no topo do card.<br>' +
+        '3. Escolha <b>"Abrir em exibição pop-up" (Janela Flutuante)</b> ou <b>"Tela dividida"</b>!<br>' +
+        'Assim a Bolha fica aberta por cima do inDrive o tempo todo.',
+      textoOk: 'Entendi!',
+      textoCancelar: 'Fechar',
+      variante: 'green'
+    });
+  },
+
+  inicializarArrasteBolha() {
+    if (this._bolhaDragInit) return;
+    const bolha = document.getElementById('bolhaHudFlutuante');
+    const header = document.getElementById('bolhaHudHeader');
+    if (!bolha || !header) return;
+    this._bolhaDragInit = true;
+
+    let arrastando = false;
+    let startY = 0;
+    let topInicial = 58;
+
+    header.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('button')) return;
+      arrastando = true;
+      startY = e.clientY;
+      topInicial = bolha.offsetTop;
+      header.setPointerCapture(e.pointerId);
+    });
+
+    header.addEventListener('pointermove', (e) => {
+      if (!arrastando) return;
+      const novoTop = Math.max(8, Math.min(window.innerHeight - 160, topInicial + (e.clientY - startY)));
+      bolha.style.top = `${novoTop}px`;
+    });
+
+    header.addEventListener('pointerup', () => {
+      arrastando = false;
+    });
+  },
 
   alternarVozSimulador() {
     this.vozSimuladorAtiva = !this.vozSimuladorAtiva;
@@ -1879,6 +1987,28 @@ const UIController = {
         ${htmlAlertas}
       </div>
     `;
+
+    // Sincroniza a Bolha Flutuante (#bolhaHudFlutuante) se estiver visível
+    const bolha = document.getElementById('bolhaHudFlutuante');
+    if (bolha) {
+      bolha.style.borderColor = cor;
+      const elSem = document.getElementById('bolhaHudSemaforo');
+      const elMet = document.getElementById('bolhaHudMetricas');
+      const elCon = document.getElementById('bolhaHudContra');
+      if (elSem) {
+        elSem.style.color = cor;
+        elSem.innerHTML = `${veredito} • Sobra: ${FinanceEngine.moeda(lucroCorrida)}`;
+      }
+      if (elMet) {
+        elMet.textContent =
+          `Oferta ${FinanceEngine.moedaCurta(valor)} | ${FinanceEngine.numeroBR(kmTotal, 1)} km | Real: ${FinanceEngine.moeda(reaisPorKmBruto)}/km | Líq: ${FinanceEngine.moedaCurta(ganhoHoraLiq)}/h`;
+      }
+      if (elCon) {
+        elCon.innerHTML = valor < contraMinima
+          ? `✏️ Peça no mínimo <b>${FinanceEngine.moedaCurta(contraMinima)}</b> na canetinha (Ideal: ${FinanceEngine.moedaCurta(contraBoa)})`
+          : `✅ Oferta bateu a meta mínima (${FinanceEngine.moedaCurta(contraMinima)})`;
+      }
+    }
 
     const centavosOuReais = FinanceEngine.numeroBR(reaisPorKmBruto, 2);
     const fala = `${vereditoVoz}. ${centavosOuReais} por quilômetro real. Sobra livre de ${Math.round(lucroCorrida)} reais. ` +
