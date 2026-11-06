@@ -1159,83 +1159,6 @@ input::placeholder {
   font-weight: 700;
 }
 
-/* Bolha HUD Flutuante (Semáforo 🟢🟡🔴 Arrastável / Janela Compacta) */
-.floating-hud-bubble {
-  position: fixed;
-  top: 58px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: calc(100% - 24px);
-  max-width: 410px;
-  background: rgba(14, 14, 14, 0.97);
-  backdrop-filter: blur(14px);
-  border: 2px solid var(--uber-green);
-  border-radius: 18px;
-  padding: 12px 14px;
-  z-index: 260;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.85);
-  touch-action: none;
-}
-.floating-hud-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  cursor: grab;
-  margin-bottom: 6px;
-}
-.floating-hud-status {
-  font-size: 0.92rem;
-  font-weight: 900;
-  color: var(--uber-green);
-}
-.floating-hud-controls {
-  display: flex;
-  gap: 6px;
-}
-.hud-mini-btn {
-  background: var(--uber-surface-elevated);
-  border: 1px solid var(--uber-border);
-  color: var(--uber-white);
-  border-radius: 8px;
-  width: 32px;
-  height: 32px;
-  font-size: 0.85rem;
-  font-weight: 800;
-  cursor: pointer;
-}
-.floating-hud-metrics {
-  font-size: 0.86rem;
-  font-weight: 800;
-  color: var(--uber-white);
-  margin-bottom: 4px;
-}
-.floating-hud-counter {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--uber-yellow);
-  margin-bottom: 8px;
-}
-.floating-hud-quick-row {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 5px;
-}
-.hud-step-btn {
-  min-height: 36px;
-  border-radius: 8px;
-  border: 1px solid var(--uber-border);
-  background: var(--uber-surface-elevated);
-  color: var(--uber-white);
-  font-size: 0.72rem;
-  font-weight: 800;
-  cursor: pointer;
-}
-.hud-step-btn.accent {
-  background: var(--uber-blue);
-  border-color: var(--uber-blue);
-}
-
 /* ==========================================================================
    9. RECIBO DE FECHAMENTO, AGRUPAMENTO SEMANAL & HISTÓRICO PADRONIZADO
    ========================================================================== */
@@ -1748,4 +1671,201 @@ body.sheet-aberto { overflow: hidden; }
   display: none;
   z-index: 200;
   white-space: nowrap;
+}
+
+
+/* ==========================================================================
+   12. BOLHA HUD FLUTUANTE v2 (SEMÁFORO 🟢🟡🔴 COMPACTO, ARRASTÁVEL E MINIMIZÁVEL)
+   ========================================================================== */
+.hud {
+  --hud-cor: var(--uber-green);
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 20px);
+  max-width: 400px;
+  background: rgba(10, 10, 10, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  box-shadow: 0 0 0 2px var(--hud-cor), 0 14px 40px rgba(0, 0, 0, 0.8);
+  padding: 10px 12px 12px;
+  z-index: 260;
+  touch-action: none;
+  font-variant-numeric: tabular-nums;
+  transition: box-shadow 0.2s ease, width 0.2s ease;
+}
+.hud.hidden { display: none; }
+
+.hud-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: grab;
+}
+.hud-luz {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--hud-cor);
+  box-shadow: 0 0 12px var(--hud-cor);
+}
+.hud-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.hud-veredito {
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--hud-cor);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hud-sobra-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.hud-sobra {
+  font-size: 1.55rem;
+  font-weight: 900;
+  color: var(--uber-white);
+  letter-spacing: -0.5px;
+}
+.hud-sobra-wrap small {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--uber-muted);
+}
+.hud-icon-btn {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--uber-white);
+  font-size: 0.9rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.hud-body { margin-top: 10px; }
+
+.hud-chips {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.hud-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 7px 9px;
+  min-width: 0;
+}
+.hud-chip small {
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--uber-muted);
+}
+.hud-chip b {
+  font-size: 0.9rem;
+  font-weight: 900;
+  color: var(--uber-white);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hud-contra {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 192, 67, 0.1);
+  color: var(--uber-yellow);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.hud-contra.ok {
+  background: rgba(6, 193, 103, 0.1);
+  color: var(--uber-green);
+}
+.hud-contra b { color: var(--uber-white); }
+
+.hud-steps {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+  margin-top: 8px;
+}
+.hud-steps button {
+  min-height: 34px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--uber-white);
+  font-size: 0.7rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.hud-steps button:active { background: rgba(255, 255, 255, 0.16); }
+.hud-steps button.accent {
+  background: var(--uber-blue);
+}
+
+/* Modo minimizado: vira uma pílula com a luz e a sobra */
+.hud.mini {
+  width: auto;
+  max-width: none;
+  padding: 8px 10px 8px 14px;
+  border-radius: 999px;
+}
+.hud.mini .hud-body,
+.hud.mini .hud-sobra-wrap small { display: none; }
+.hud.mini .hud-sobra { font-size: 1.1rem; }
+.hud.mini .hud-icon-btn { width: 28px; height: 28px; font-size: 0.75rem; }
+
+/* Modo Foco Pop-up (Esconde o fundo do app quando a Bolha está aberta na Janela Pop-up do Android) */
+body.hud-foco {
+  background: #000000 !important;
+  padding-bottom: 0 !important;
+}
+body.hud-foco .app-shell,
+body.hud-foco .bottom-nav {
+  display: none !important;
+}
+body.hud-foco .hud {
+  top: 12px !important;
+  width: calc(100% - 16px);
+  max-width: 440px;
+}
+
+.hud-apk-bar {
+  margin-top: 8px;
+  width: 100%;
+  min-height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(6, 193, 103, 0.35);
+  background: rgba(6, 193, 103, 0.12);
+  color: var(--uber-green);
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.hud-apk-bar:active {
+  background: rgba(6, 193, 103, 0.22);
 }

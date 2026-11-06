@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Meu Turno Bolha</string>
+    <string name="accessibility_desc">Lê o valor, a distância e o destino dos pedidos do inDrive para mostrar na bolha se a corrida compensa. Não clica nem aceita nada sozinho.</string>
+</resources>

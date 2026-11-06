@@ -1632,7 +1632,8 @@ const UIController = {
   abrirBolhaHud() {
     const bolha = document.getElementById('bolhaHudFlutuante');
     if (!bolha) return;
-    bolha.classList.remove('hidden');
+    bolha.classList.remove('hidden', 'mini');
+    document.body.classList.add('hud-foco');
 
     // Se ainda não digitou valores no simulador, carrega exemplo padrão (R$ 20 / 2.4km busca / 18.6km)
     if (this.lerNumero('simValor') <= 0) {
@@ -1642,11 +1643,36 @@ const UIController = {
     }
     this.inicializarArrasteBolha();
     this.simularCorrida(false);
-    this.notificar('🫧 Bolha ativa! Arraste pelo topo ou use os botões rápidos.');
+    this.notificar('🫧 Modo Bolha limpo ativado! Toque no ✕ para voltar ao painel.');
   },
 
   fecharBolhaHud() {
-    document.getElementById('bolhaHudFlutuante')?.classList.add('hidden');
+    const bolha = document.getElementById('bolhaHudFlutuante');
+    if (bolha) bolha.classList.add('hidden');
+    document.body.classList.remove('hud-foco');
+  },
+
+  minimizarBolhaHud() {
+    document.getElementById('bolhaHudFlutuante')?.classList.toggle('mini');
+  },
+
+  async abrirInfoBolhaAndroid() {
+    const ok = await Sheet.confirmar({
+      icone: '📲',
+      titulo: 'Bolha que lê o inDrive sozinha',
+      subtitulo:
+        'O navegador não deixa um site ler a tela de outro app. Para a bolha aparecer sozinha quando tocar corrida, instale o app <b>Meu Turno Bolha</b> (Android):<br><br>' +
+        '1. Toque em <b>Baixar APK</b> e instale (permita "fontes desconhecidas").<br>' +
+        '2. Abra o app e toque em <b>Permitir janela flutuante</b>.<br>' +
+        '3. Toque em <b>Ativar leitor de tela</b> e ligue <b>Meu Turno Bolha</b>.<br>' +
+        '4. Se aparecer "Configuração restrita": Configurações › Apps › Meu Turno Bolha › ⋮ › <b>Permitir configurações restritas</b>.',
+      textoOk: '⬇️ Baixar APK',
+      textoCancelar: 'Agora não',
+      variante: 'green'
+    });
+    if (ok) {
+      window.open('https://github.com/Xaviervx2003/meu-turno/releases/download/bolha-latest/MeuTurno-Bolha.apk', '_blank', 'noopener');
+    }
   },
 
   ajustarRapidoBolha(tipo, delta) {
@@ -1988,25 +2014,26 @@ const UIController = {
       </div>
     `;
 
-    // Sincroniza a Bolha Flutuante (#bolhaHudFlutuante) se estiver visível
+    // Sincroniza a Bolha Flutuante (#bolhaHudFlutuante)
     const bolha = document.getElementById('bolhaHudFlutuante');
     if (bolha) {
-      bolha.style.borderColor = cor;
-      const elSem = document.getElementById('bolhaHudSemaforo');
-      const elMet = document.getElementById('bolhaHudMetricas');
-      const elCon = document.getElementById('bolhaHudContra');
-      if (elSem) {
-        elSem.style.color = cor;
-        elSem.innerHTML = `${veredito} • Sobra: ${FinanceEngine.moeda(lucroCorrida)}`;
-      }
-      if (elMet) {
-        elMet.textContent =
-          `Oferta ${FinanceEngine.moedaCurta(valor)} | ${FinanceEngine.numeroBR(kmTotal, 1)} km | Real: ${FinanceEngine.moeda(reaisPorKmBruto)}/km | Líq: ${FinanceEngine.moedaCurta(ganhoHoraLiq)}/h`;
-      }
+      const rotulo = vereditoVoz === 'Corrida boa'
+        ? 'Boa • pode aceitar'
+        : (vereditoVoz === 'Corrida regular' ? 'Regular • contraproponha' : 'Ruim • recuse ou contraproponha');
+      bolha.style.setProperty('--hud-cor', cor);
+      const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+      set('hudVeredito', rotulo);
+      set('hudSobra', FinanceEngine.moeda(lucroCorrida, true));
+      set('hudKmReal', FinanceEngine.moeda(reaisPorKmBruto, true));
+      set('hudHora', `${FinanceEngine.moedaCurta(ganhoHoraLiq, true)}/h`);
+      set('hudKm', `${FinanceEngine.numeroBR(kmTotal, 1)} km`);
+      const elCon = document.getElementById('hudContra');
       if (elCon) {
-        elCon.innerHTML = valor < contraMinima
-          ? `✏️ Peça no mínimo <b>${FinanceEngine.moedaCurta(contraMinima)}</b> na canetinha (Ideal: ${FinanceEngine.moedaCurta(contraBoa)})`
-          : `✅ Oferta bateu a meta mínima (${FinanceEngine.moedaCurta(contraMinima)})`;
+        const abaixo = valor < contraMinima;
+        elCon.classList.toggle('ok', !abaixo);
+        elCon.innerHTML = abaixo
+          ? `✏️ Peça no mínimo <b>${FinanceEngine.moedaCurta(contraMinima, true)}</b> · ideal <b>${FinanceEngine.moedaCurta(contraBoa, true)}</b>`
+          : `✅ ${FinanceEngine.moedaCurta(valor, true)} já bate sua meta (mín. ${FinanceEngine.moedaCurta(contraMinima, true)})`;
       }
     }
 

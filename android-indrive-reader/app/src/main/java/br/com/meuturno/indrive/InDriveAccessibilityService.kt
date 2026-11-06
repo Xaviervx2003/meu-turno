@@ -7,17 +7,17 @@ import android.view.accessibility.AccessibilityNodeInfo
 import java.util.Locale
 
 /**
- * Lê de forma passiva e segura os textos expostos pelo card "Pedido de viagem" do inDrive,
- * calcula os indicadores reais e exibe na Janela Flutuante (OverlayHudService).
+ * Lê de forma passiva os textos do card "Pedido de viagem" do inDrive,
+ * calcula se a corrida compensa e mostra na bolha (OverlayHudService).
  *
- * IMPORTANTE: Nunca executa cliques automáticos (respeita os termos das plataformas).
+ * IMPORTANTE: nunca clica nem aceita corridas (respeita os termos do inDrive).
  */
 class InDriveAccessibilityService : AccessibilityService(), TextToSpeech.OnInitListener {
 
     private var tts: TextToSpeech? = null
     private var ttsPronto = false
-    private var ultimaAssinaturaLida: String = ""
-    private var ultimoTimestampMs: Long = 0L
+    private var ultimaAssinatura = ""
+    private var ultimoMs = 0L
 
     override fun onCreate() {
         super.onCreate()
@@ -28,27 +28,33 @@ class InDriveAccessibilityService : AccessibilityService(), TextToSpeech.OnInitL
         if (status == TextToSpeech.SUCCESS) {
             val res = tts?.setLanguage(Locale("pt", "BR"))
             ttsPronto = res != TextToSpeech.LANG_MISSING_DATA && res != TextToSpeech.LANG_NOT_SUPPORTED
-            tts?.setSpeechRate(1.12f)
+            tts?.setSpeechRate(1.1f)
         }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        val rootNode = rootInActiveWindow ?: return
+        val raiz = rootInActiveWindow ?: return
         val textos = mutableListOf<String>()
-        coletarTextosRecursivo(rootNode, textos)
+        coletarTextos(raiz, textos, 0)
+        if (textos.isEmpty()) return
+
+        val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
+
+        // Guarda o que foi lido (só no aparelho) para diagnóstico quando algum pedido não for reconhecido
+        if (textos.any { it.contains("R$") }) {
+            prefs.edit()
+                .putString(KEY_ULTIMOS_TEXTOS, textos.joinToString("\n").take(4000))
+                .putLong(KEY_ULTIMA_LEITURA_MS, System.currentTimeMillis())
+                .apply()
+        }
 
         val oferta = RideOfferParser.extrairOferta(textos) ?: return
         val assinatura = "${oferta.valorOferecido}|${oferta.kmBusca}|${oferta.kmCorrida}|${oferta.enderecoDestinoB}"
         val agora = System.currentTimeMillis()
+        if (assinatura == ultimaAssinatura && agora - ultimoMs < 8000L) return
+        ultimaAssinatura = assinatura
+        ultimoMs = agora
 
-        // Evita recalcular/repetir voz para o mesmo pedido na tela
-        if (assinatura == ultimaAssinaturaLida && (agora - ultimoTimestampMs) < 8000L) {
-            return
-        }
-        ultimaAssinaturaLida = assinatura
-        ultimoTimestampMs = agora
-
-        val prefs = getSharedPreferences("meu_turno_indrive_prefs", MODE_PRIVATE)
         val config = DriverConfig(
             consumoKmL = prefs.getFloat("consumo_kml", 10.0f).toDouble(),
             precoLitroCombustivel = prefs.getFloat("preco_litro", 6.50f).toDouble(),
@@ -58,6 +64,7 @@ class InDriveAccessibilityService : AccessibilityService(), TextToSpeech.OnInitL
         )
 
         val analise = RideCalculator.analisar(oferta, config)
+        prefs.edit().putInt(KEY_PEDIDOS_LIDOS, prefs.getInt(KEY_PEDIDOS_LIDOS, 0) + 1).apply()
         OverlayHudService.exibirAnalise(this, analise)
 
         if (config.falarAvisoPorVoz && ttsPronto) {
@@ -65,12 +72,14 @@ class InDriveAccessibilityService : AccessibilityService(), TextToSpeech.OnInitL
         }
     }
 
-    private fun coletarTextosRecursivo(node: AccessibilityNodeInfo?, saida: MutableList<String>) {
-        if (node == null) return
-        node.text?.toString()?.takeIf { it.isNotBlank() }?.let { saida.add(it) }
-        node.contentDescription?.toString()?.takeIf { it.isNotBlank() }?.let { saida.add(it) }
+    private fun coletarTextos(node: AccessibilityNodeInfo?, saida: MutableList<String>, nivel: Int) {
+        if (node == null || nivel > 40) return
+        node.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }?.let { saida.add(it) }
+        node.contentDescription?.toString()?.trim()?.takeIf { it.isNotEmpty() }?.let {
+            if (saida.lastOrNull() != it) saida.add(it)
+        }
         for (i in 0 until node.childCount) {
-            coletarTextosRecursivo(node.getChild(i), saida)
+            coletarTextos(node.getChild(i), saida, nivel + 1)
         }
     }
 
@@ -81,5 +90,12 @@ class InDriveAccessibilityService : AccessibilityService(), TextToSpeech.OnInitL
     override fun onDestroy() {
         tts?.shutdown()
         super.onDestroy()
+    }
+
+    companion object {
+        const val PREFS = "meu_turno_indrive_prefs"
+        const val KEY_ULTIMOS_TEXTOS = "ultimos_textos_lidos"
+        const val KEY_ULTIMA_LEITURA_MS = "ultima_leitura_ms"
+        const val KEY_PEDIDOS_LIDOS = "pedidos_lidos"
     }
 }
